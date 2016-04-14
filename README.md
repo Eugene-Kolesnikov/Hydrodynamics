@@ -1,15 +1,20 @@
+### Компиляция и запуск
 Compilation:
 
 ```{bash}
-cd ./guiPlot
-qmake guiPlot.pro
-make && make clean
-cd ../
-make && make clean
+./install.sh
 ```
 
 Execute the application:
 
 ```{bash}
-mpirun -l -n 8 ./hydrodynamics
+./build/execute.sh
 ```
+Запускается 5 узлов, последний из них -- серверный узел.
+
+### Описание
+`guiPlot` -- папка с отдельным проектом на Qt c++, который при компиляции создает динамическую библиотеку, использующуюся в основном проекте.
+
+### TODO
+-  добавить систему логирования
+-  UML диаграмма программы

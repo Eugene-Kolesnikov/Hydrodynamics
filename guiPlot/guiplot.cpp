@@ -3,7 +3,7 @@
 #include "qcustomplot.h"
 
 extern "C"
-int plotField(int argc, char** argv, double** array, int Nx, int Ny)
+int plotField(int argc, char** argv, double** array, int Nx, int Ny, const char* filename)
 {
     QApplication a(argc, argv);
     QCustomPlot* customPlot = new QCustomPlot();
@@ -31,7 +31,7 @@ int plotField(int argc, char** argv, double** array, int Nx, int Ny)
     customPlot->plotLayout()->addElement(0, 1, colorScale); // add it to the right of the main axis rect
     colorScale->setType(QCPAxis::atRight); // scale shall be vertical bar with tick/axis labels right (actually atRight is already the default)
     colorMap->setColorScale(colorScale); // associate the color map with the color scale
-    colorScale->axis()->setLabel("Density");
+    colorScale->axis()->setLabel("Dense Field");
 
     // set the color gradient of the color map to one of the presets:
     colorMap->setGradient(QCPColorGradient::gpJet); // gpJet, gpThermal
@@ -48,7 +48,7 @@ int plotField(int argc, char** argv, double** array, int Nx, int Ny)
 
     // rescale the key (x) and value (y) axes so the whole color map is visible:
     customPlot->rescaleAxes();
-    customPlot->savePng("denseField.png",640,480);
+    customPlot->savePng(filename,640,480);
 
     delete customPlot;
     return 0;

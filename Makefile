@@ -4,8 +4,8 @@ MPI_CC     = mpicxx
 LIBS_PATH = -L/usr/local/Cellar/mpich/3.2/lib/
 LIBS =  -lmpi -lopa -lmpl -lrt -lcr -lpthread
 INCLUDE_PATH = -I/usr/local/Cellar/mpich/3.2/include/
-CFLAGS = -c
-NVCCFLAGS = -arch=sm_30 -ccbin=$(MPI_CC)
+CFLAGS = -c -O3
+NVCCFLAGS = -arch=sm_30 -O3 -ccbin=$(MPI_CC)
 
 OBJECTS = main.o processNode.o serverNode.o
 

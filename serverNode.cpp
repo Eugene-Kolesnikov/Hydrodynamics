@@ -1,22 +1,25 @@
 #include "serverNode.h"
 #include <mpi.h>
 #include <iostream>
+#include <getopt.h>
 
 ServerNode::ServerNode(const int rank, const int size, const int Nx, const int Ny):
-    Node::Node(rank, size, Nx, Ny)
+    Node::Node(rank, size, Nx, Ny), m_loadedGui(false), m_fileCount(0)
 {
-    m_guiLibHandle = dlopen("guiPlot/libguiPlot.dylib", RTLD_LAZY);
-    QplotField = (int (*)(int argc, char** argv, double** denseField, int Nx, int Ny))dlsym(m_guiLibHandle, "plotField");
+    initDenseField();
 }
 
 ServerNode::~ServerNode()
 {
+    if(m_loadedGui == true)
+        dlclose(m_guiLibHandle);
     delete m_denseField;
 }
 
 void ServerNode::runNode()
 {
-    this->plotDenseField();
+    for(int i = 0; i < 11; ++i)
+        this->plotDenseField();
 }
 
 void ServerNode::initDenseField()
@@ -60,7 +63,11 @@ void ServerNode::loadUpdatedField()
 
 void ServerNode::plotDenseField()
 {
-    QplotField(argc, argv, m_denseField, m_Nx, m_Ny);
+    if(m_loadedGui == true) {
+        std::string filename = getFilename();
+        QplotField(m_argc, m_argv, m_denseField, m_Nx, m_Ny, filename.c_str());
+        ++m_fileCount;
+    }
 }
 
 void ServerNode::cellToCoord(int xIndex, int yIndex, double* x, double* y)
@@ -73,6 +80,41 @@ void ServerNode::cellToCoord(int xIndex, int yIndex, double* x, double* y)
 
 void ServerNode::setArgcArgv(int t_argc, char** t_argv)
 {
-    argc = t_argc;
-    argv = t_argv;
+    m_argc = t_argc;
+    m_argv = t_argv;
+}
+
+void ServerNode::loadGui(std::string gui_dl)
+{
+    bool noErrors = true;
+    m_guiLibHandle = dlopen(gui_dl.c_str(), RTLD_LAZY);
+    if (!m_guiLibHandle) {
+        fputs (dlerror(), stderr);
+        noErrors = false;
+    }
+    QplotField = (int (*)(int argc, char** argv, double** denseField, int Nx, int Ny, const char* filename))dlsym(m_guiLibHandle, "plotField");
+    char *error;
+    if (noErrors == true && (error = dlerror()) != NULL) {
+        fputs(error, stderr);
+        noErrors = false;
+        delete error;
+    }
+    if(noErrors == true) {
+        m_loadedGui = true;
+    }
+}
+
+std::string ServerNode::getFilename()
+{
+    std::string filename("denseField");
+    if(m_fileCount < 10) {
+        filename += "000";
+    } else if(m_fileCount < 100) {
+        filename += "00";
+    } else if(m_fileCount < 1000) {
+        filename += "0";
+    }
+    filename += (std::to_string(m_fileCount) + ".png");
+    std::cout << filename << std::endl;
+    return filename;
 }
