@@ -18,3 +18,4 @@ Execute the application:
 ### TODO
 -  добавить систему логирования
 -  UML диаграмма программы
+-  Разобраться как работать с [ffmpeg](https://trac.ffmpeg.org/wiki/Create%20a%20video%20slideshow%20from%20images).
