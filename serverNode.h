@@ -5,6 +5,7 @@
 #include "guiPlot/guiplot.h"
 #include "node.h"
 #include <string>
+#include "LogSystem/FileLogger.hpp"
 
 class ServerNode : public Node
 {
@@ -35,6 +36,7 @@ private:
 private:
     double** m_denseField;
     int m_fileCount;
+    logging::FileLogger Log;
 };
 
 #endif // SERVERNODE_H

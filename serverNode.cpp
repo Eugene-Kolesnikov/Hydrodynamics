@@ -4,7 +4,8 @@
 #include <getopt.h>
 
 ServerNode::ServerNode(const int rank, const int size, const int Nx, const int Ny):
-    Node::Node(rank, size, Nx, Ny), m_loadedGui(false), m_fileCount(0)
+    Node::Node(rank, size, Nx, Ny), m_loadedGui(false), m_fileCount(0),
+    Log(rank, createLogFilename(rank))
 {
     initDenseField();
 }
@@ -18,8 +19,10 @@ ServerNode::~ServerNode()
 
 void ServerNode::runNode()
 {
-    for(int i = 0; i < 11; ++i)
+    for(int i = 0; i < 11; ++i) {
         this->plotDenseField();
+        Log << ("Plotted field N" + std::to_string(i)).c_str();
+    }
 }
 
 void ServerNode::initDenseField()
@@ -49,6 +52,7 @@ void ServerNode::initDenseField()
             }
         }
     }
+    Log << "Dense field initialized.";
 }
 
 void ServerNode::shareInitField()

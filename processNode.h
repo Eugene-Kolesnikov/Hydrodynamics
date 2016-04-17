@@ -1,6 +1,7 @@
 #ifndef PROCESSNODE_H
 #define PROCESSNODE_H
 
+#include "LogSystem/FileLogger.hpp"
 #include "node.h"
 
 class ProcessNode : public Node
@@ -13,6 +14,9 @@ public:
 
 private:
     void initBlock();
+
+private:
+    logging::FileLogger Log;
 };
 
 #endif // PROCESSNODE_H

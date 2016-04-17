@@ -1,22 +1,24 @@
-NVCC       = nvcc
-MPI_CC     = mpicxx
+NVCC        = nvcc
+MPI_CXX     = mpicxx
 
 LIBS_PATH = -L/usr/local/Cellar/mpich/3.2/lib/
 LIBS =  -lmpi -lopa -lmpl -lrt -lcr -lpthread
 INCLUDE_PATH = -I/usr/local/Cellar/mpich/3.2/include/
-CFLAGS = -c -O3
-NVCCFLAGS = -arch=sm_30 -O3 -ccbin=$(MPI_CC)
+CXXFLAGS = -c -O3 -std=c++11
+CFLAGS = -c
+NVCCFLAGS = -arch=sm_30 -O3 -ccbin=$(MPI_CXX)
 
-OBJECTS = main.o processNode.o serverNode.o
+OBJECTS = main.o processNode.o serverNode.o LogSystem/FileLogger.o
 
 all: $(OBJECTS)
 	$(NVCC) $(NVCCFLAGS) $(OBJECTS) -o hydrodynamics
 
 %.o: %.cpp
-	$(MPI_CC) $(CFLAGS) $< -o $@
+	$(MPI_CXX) $(CXXFLAGS) $< -o $@
 
 %.o: %.cu
 	$(NVCC) $(NVCCFLAGS) $(CFLAGS) $< -o $@
 
 clean:
 	rm *.o
+	rm LogSystem/*.o

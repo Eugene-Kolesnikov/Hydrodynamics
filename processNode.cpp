@@ -2,7 +2,8 @@
 #include <mpi.h>
 
 ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int Ny):
-    Node::Node(rank, size, Nx, Ny)
+    Node::Node(rank, size, Nx, Ny),
+    Log(rank, createLogFilename(rank))
 {
 
 }
