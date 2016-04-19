@@ -18,5 +18,7 @@ Execute the application:
 `LogSystem` -- папка с исходниками системы логирования.
 
 ### TODO
--  UML диаграмма программы
+-  UML диаграмма программы.
 -  Разобраться как работать с [ffmpeg](https://trac.ffmpeg.org/wiki/Create%20a%20video%20slideshow%20from%20images).
+-  Обмен halo значений между узлами.
+-  Реализация ядра вычисления параметров на следующем шаге.

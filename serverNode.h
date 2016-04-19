@@ -21,7 +21,9 @@ private:
     void shareInitField();
     void loadUpdatedField();
     void plotDenseField();
+    bool chechIfContinue();
 
+private:
     void cellToCoord(int xIndex, int yIndex, double* x, double* y);
     int covert2Dto1D(int xIndex, int yIndex);
     std::string getFilename();

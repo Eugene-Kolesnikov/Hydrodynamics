@@ -21,10 +21,15 @@ ServerNode::~ServerNode()
 void ServerNode::runNode()
 {
     shareInitField();
-    loadUpdatedField();
-    plotDenseField();
-
-    Log << "Plotted dense field";
+    while(true) {
+        loadUpdatedField();
+        if(chechIfContinue() == false) {
+            Log << "Recieved the 'stop' marker.";
+            break;
+        }
+        plotDenseField();
+    }
+    Log << "Correct exit";
 }
 
 void ServerNode::initDenseField()
@@ -79,6 +84,11 @@ void ServerNode::initDenseField()
         }
     }
     Log << "Dense field initialized.";
+}
+
+bool ServerNode::chechIfContinue()
+{
+    return m_Field[0].r != -1;
 }
 
 void ServerNode::shareInitField()
@@ -136,6 +146,7 @@ void ServerNode::plotDenseField()
         std::string filename = getFilename();
         QplotField(m_argc, m_argv, (void*)m_Field, m_Nx, m_Ny, filename.c_str());
         ++m_fileCount;
+        Log << (std::string("Saved image '") + filename + std::string("'")).c_str();
     }
 }
 

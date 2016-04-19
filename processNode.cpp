@@ -9,21 +9,42 @@ ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int
     int numColumns = m_Nx;
     int intNumColumns = numColumns / numCompNodes;
     int intNumPoints = (intNumColumns + 2) * m_bNy; // (adding 2 columns of halo points)
+    int numHaloElements = 2 * m_bNy;
     m_columns = (intNumColumns + 2);
     m_Field = new Cell[m_columns*m_bNy];
-    Log << (std::string("Created array of ") + std::to_string(m_columns*m_bNy) + std::string(" elements.")).c_str();
+    Log << (std::string("Created array of ") + std::to_string(intNumPoints) + std::string(" elements.")).c_str();
+    AllocateHostPinnedMemory((void **)&m_haloElements, numHaloElements * sizeof(Cell), &Log);
+    Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" elements on Host in pinned memory using cudaHostAlloc.")).c_str();
+    AllocateGpuMemory((void**)&m_device_Field, intNumPoints * sizeof(Cell), &Log);
+    Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" elements on GPU.")).c_str();
 }
 
 ProcessNode::~ProcessNode()
 {
     delete m_Field;
+    FreeGpuMemory(m_device_Field, &Log);
+    FreeHostPinnedMemory(m_haloElements, &Log);
 }
 
 void ProcessNode::runNode()
 {
+    int intNumPoints = m_columns * m_bNy;
     initBlock();
-    updateBorders(); //cpu version
+    loadDataToGpu(m_device_Field, m_Field, intNumPoints * sizeof(Cell), &Log);
+    Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements to GPU.")).c_str();
+    while(m_time < TOTAL_TIME) {
+        Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
+        updateBorders(); //cpu version
+        // TODO: compute CUDA kernel
+        // TODO: exchange halo points
+        loadDataToHost(m_Field, m_device_Field, intNumPoints * sizeof(Cell), &Log);
+        Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements from GPU.")).c_str();
+        sendBlockToServer();
+        m_time += TAU;
+    }
+    setStopCheckMark();
     sendBlockToServer();
+    Log << "Correct exit";
 }
 
 void ProcessNode::initBlock()
@@ -133,4 +154,13 @@ void ProcessNode::updateBorders()
             }
         }
     }
+}
+
+void ProcessNode::setStopCheckMark()
+{
+    if(m_rank == 0) {
+        m_Field[0].r = -1;
+        Log << "'Stop' marker is set.";
+    }
+
 }
