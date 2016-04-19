@@ -23,6 +23,7 @@ private:
     void plotDenseField();
 
     void cellToCoord(int xIndex, int yIndex, double* x, double* y);
+    void covert2Dto1D(int xIndex, int yIndex, int* id);
     std::string getFilename();
     void parseCmdArgv_guiDL(int argc, char** argv);
 
@@ -31,10 +32,10 @@ private:
     char** m_argv;
     bool m_loadedGui;
     void* m_guiLibHandle;
-    int (*QplotField)(int argc, char** argv, double** denseField, int Nx, int Ny, const char* filename);
+    int (*QplotField)(int argc, char** argv, double* denseField, int Nx, int Ny, const char* filename);
 
 private:
-    double** m_denseField;
+    double* m_denseField;
     int m_fileCount;
     logging::FileLogger Log;
 };

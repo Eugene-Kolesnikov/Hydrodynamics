@@ -27,28 +27,29 @@ void ServerNode::runNode()
 
 void ServerNode::initDenseField()
 {
+    int id;
     double x, y;
     double d1 = 1.0 / 3.0;
     double d2 = 2.0 / 3.0;
     double del = 0.1;
-    m_denseField = new double* [m_Nx];
+    m_denseField = new double [m_Nx * m_Ny];
     for (int xIndex = 0; xIndex < m_Nx; ++xIndex)
     {
-        m_denseField[xIndex] = new double [m_Ny];
         for (int yIndex = 0; yIndex < m_Ny; ++yIndex)
         {
+            covert2Dto1D(xIndex, yIndex, &id);
             cellToCoord(xIndex, yIndex, &x, &y);
             if(y < d1 - del) {
-                m_denseField[xIndex][yIndex] = 1;
+                m_denseField[id] = 1;
             } else if(y < d1) {
                 if(x < d1 || x > 2.0*d1)
-                    m_denseField[xIndex][yIndex] = 1;
+                    m_denseField[id] = 1;
                 else
-                    m_denseField[xIndex][yIndex] = 5;
+                    m_denseField[id] = 5;
             } else if(y < d2) {
-                m_denseField[xIndex][yIndex] = 5;
+                m_denseField[id] = 5;
             } else {
-                m_denseField[xIndex][yIndex] = 7;
+                m_denseField[id] = 7;
             }
         }
     }
@@ -57,7 +58,6 @@ void ServerNode::initDenseField()
 
 void ServerNode::shareInitField()
 {
-
 }
 
 void ServerNode::loadUpdatedField()
@@ -82,6 +82,11 @@ void ServerNode::cellToCoord(int xIndex, int yIndex, double* x, double* y)
     *y = hy * yIndex;
 }
 
+void ServerNode::covert2Dto1D(int xIndex, int yIndex, int* id)
+{
+    *id = xIndex * m_Nx + yIndex;
+}
+
 void ServerNode::setArgcArgv(int t_argc, char** t_argv)
 {
     m_argc = t_argc;
@@ -96,7 +101,7 @@ void ServerNode::loadGui(std::string gui_dl)
         fputs (dlerror(), stderr);
         noErrors = false;
     }
-    QplotField = (int (*)(int argc, char** argv, double** denseField, int Nx, int Ny, const char* filename))dlsym(m_guiLibHandle, "plotField");
+    QplotField = (int (*)(int argc, char** argv, double* denseField, int Nx, int Ny, const char* filename))dlsym(m_guiLibHandle, "plotField");
     char *error;
     if (noErrors == true && (error = dlerror()) != NULL) {
         fputs(error, stderr);
@@ -119,6 +124,6 @@ std::string ServerNode::getFilename()
         filename += "0";
     }
     filename += (std::to_string(m_fileCount) + ".png");
-    std::cout << filename << std::endl;
+    //std::cout << filename << std::endl;
     return filename;
 }

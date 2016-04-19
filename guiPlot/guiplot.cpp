@@ -3,7 +3,7 @@
 #include "qcustomplot.h"
 
 extern "C"
-int plotField(int argc, char** argv, double** array, int Nx, int Ny, const char* filename)
+int plotField(int argc, char** argv, double* array, int Nx, int Ny, const char* filename)
 {
     QApplication a(argc, argv);
     QCustomPlot* customPlot = new QCustomPlot();
@@ -22,7 +22,7 @@ int plotField(int argc, char** argv, double** array, int Nx, int Ny, const char*
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
     for (int xIndex=0; xIndex<nx; ++xIndex)
         for (int yIndex=0; yIndex<ny; ++yIndex)
-            colorMap->data()->setCell(xIndex, yIndex, array[xIndex][yIndex]);
+            colorMap->data()->setCell(xIndex, yIndex, array[xIndex*nx + yIndex]);
 
     colorMap->data()->setCell(0, 0, 10); //hack!
 
