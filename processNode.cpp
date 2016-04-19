@@ -68,35 +68,67 @@ void ProcessNode::updateBorders()
         {
             if(m_rank == 0) {
                 if(xIndex == 0) { //left vertical line
-                    if(yIndex == 0 || yIndex == (m_bNy-1))
-                        m_Field[xIndex * m_bNy + yIndex].r = 0.0;
-                    else
-                        m_Field[xIndex * m_bNy + yIndex].r = -m_Field[(xIndex+1) * m_bNy + yIndex].r;
+                    if(yIndex == 0 || yIndex == (m_bNy-1)) {
+                        m_Field[xIndex * m_bNy + yIndex].r =
+                        m_Field[xIndex * m_bNy + yIndex].u =
+                        m_Field[xIndex * m_bNy + yIndex].v =
+                        m_Field[xIndex * m_bNy + yIndex].e = 0.0;
+                    } else {
+                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[(xIndex+1) * m_bNy + yIndex].r;
+                        m_Field[xIndex * m_bNy + yIndex].u = -m_Field[(xIndex+1) * m_bNy + yIndex].u;
+                        m_Field[xIndex * m_bNy + yIndex].v = m_Field[(xIndex+1) * m_bNy + yIndex].v;
+                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[(xIndex+1) * m_bNy + yIndex].e;
+                    }
                 } else {
                     if(yIndex == 0) { // lower horizontal line
-                        m_Field[xIndex * m_bNy].r = -m_Field[xIndex * m_bNy + 1].r;
+                        m_Field[xIndex * m_bNy].r = m_Field[xIndex * m_bNy + 1].r;
+                        m_Field[xIndex * m_bNy].u = m_Field[xIndex * m_bNy + 1].u;
+                        m_Field[xIndex * m_bNy].v = -m_Field[xIndex * m_bNy + 1].v;
+                        m_Field[xIndex * m_bNy].e = m_Field[xIndex * m_bNy + 1].e;
                     } else if(yIndex == (m_bNy-1)) { // upper horizontal line
-                        m_Field[xIndex * m_bNy + yIndex].r = -m_Field[xIndex * m_bNy + yIndex - 1].r;
+                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[xIndex * m_bNy + yIndex - 1].r;
+                        m_Field[xIndex * m_bNy + yIndex].u = m_Field[xIndex * m_bNy + yIndex - 1].u;
+                        m_Field[xIndex * m_bNy + yIndex].v = -m_Field[xIndex * m_bNy + yIndex - 1].v;
+                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[xIndex * m_bNy + yIndex - 1].e;
                     }
                 }
             } else if(m_rank == (m_size - 2)) {
                 if(xIndex == (m_columns-1)) { //right vertical line
-                    if(yIndex == 0 || yIndex == (m_bNy-1))
-                        m_Field[xIndex * m_bNy + yIndex].r = 0.0;
-                    else
-                        m_Field[xIndex * m_bNy + yIndex].r = -m_Field[(xIndex-1) * m_bNy + yIndex].r;
+                    if(yIndex == 0 || yIndex == (m_bNy-1)) {
+                        m_Field[xIndex * m_bNy + yIndex].r =
+                        m_Field[xIndex * m_bNy + yIndex].u =
+                        m_Field[xIndex * m_bNy + yIndex].v =
+                        m_Field[xIndex * m_bNy + yIndex].e = 0.0;
+                    } else {
+                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[(xIndex-1) * m_bNy + yIndex].r;
+                        m_Field[xIndex * m_bNy + yIndex].u = -m_Field[(xIndex-1) * m_bNy + yIndex].u;
+                        m_Field[xIndex * m_bNy + yIndex].v = m_Field[(xIndex-1) * m_bNy + yIndex].v;
+                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[(xIndex-1) * m_bNy + yIndex].e;
+                    }
                 } else {
                     if(yIndex == 0) { // lower horizontal line
-                        m_Field[xIndex * m_bNy].r = -m_Field[xIndex * m_bNy + 1].r;
+                        m_Field[xIndex * m_bNy].r = m_Field[xIndex * m_bNy + 1].r;
+                        m_Field[xIndex * m_bNy].u = m_Field[xIndex * m_bNy + 1].u;
+                        m_Field[xIndex * m_bNy].v = -m_Field[xIndex * m_bNy + 1].v;
+                        m_Field[xIndex * m_bNy].e = m_Field[xIndex * m_bNy + 1].e;
                     } else if(yIndex == (m_bNy-1)) { // upper horizontal line
-                        m_Field[xIndex * m_bNy + yIndex].r = -m_Field[xIndex * m_bNy + yIndex - 1].r;
+                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[xIndex * m_bNy + yIndex - 1].r;
+                        m_Field[xIndex * m_bNy + yIndex].u = m_Field[xIndex * m_bNy + yIndex - 1].u;
+                        m_Field[xIndex * m_bNy + yIndex].v = -m_Field[xIndex * m_bNy + yIndex - 1].v;
+                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[xIndex * m_bNy + yIndex - 1].e;
                     }
                 }
             } else {
                 if(yIndex == 0) { // lower horizontal line
-                    m_Field[xIndex * m_bNy].r = -m_Field[xIndex * m_bNy + 1].r;
+                    m_Field[xIndex * m_bNy].r = m_Field[xIndex * m_bNy + 1].r;
+                    m_Field[xIndex * m_bNy].u = m_Field[xIndex * m_bNy + 1].u;
+                    m_Field[xIndex * m_bNy].v = -m_Field[xIndex * m_bNy + 1].v;
+                    m_Field[xIndex * m_bNy].e = m_Field[xIndex * m_bNy + 1].e;
                 } else if(yIndex == (m_bNy-1)) { // upper horizontal line
-                    m_Field[xIndex * m_bNy + yIndex].r = -m_Field[xIndex * m_bNy + yIndex - 1].r;
+                    m_Field[xIndex * m_bNy + yIndex].r = m_Field[xIndex * m_bNy + yIndex - 1].r;
+                    m_Field[xIndex * m_bNy + yIndex].u = m_Field[xIndex * m_bNy + yIndex - 1].u;
+                    m_Field[xIndex * m_bNy + yIndex].v = -m_Field[xIndex * m_bNy + yIndex - 1].v;
+                    m_Field[xIndex * m_bNy + yIndex].e = m_Field[xIndex * m_bNy + yIndex - 1].e;
                 }
             }
         }
