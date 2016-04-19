@@ -15,9 +15,11 @@ public:
 private:
     void initBlock();
     void sendBlockToServer();
+    void updateBorders();
 
 private:
     Cell* m_Field;
+    int m_columns;
     logging::FileLogger Log;
 };
 

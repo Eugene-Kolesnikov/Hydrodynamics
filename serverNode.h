@@ -23,7 +23,7 @@ private:
     void plotDenseField();
 
     void cellToCoord(int xIndex, int yIndex, double* x, double* y);
-    void covert2Dto1D(int xIndex, int yIndex, int* id);
+    int covert2Dto1D(int xIndex, int yIndex);
     std::string getFilename();
     void parseCmdArgv_guiDL(int argc, char** argv);
 

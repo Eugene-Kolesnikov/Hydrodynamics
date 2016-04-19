@@ -13,20 +13,22 @@ int plotField(int argc, char** argv, void* arr, int Nx, int Ny, const char* file
     customPlot->xAxis->setLabel("x");
     customPlot->yAxis->setLabel("y");
 
+    int bNx = Nx + 2;
+    int bNy = Ny + 2;
+
     // set up the QCPColorMap:
     QCPColorMap *colorMap = new QCPColorMap(customPlot->xAxis, customPlot->yAxis);
     customPlot->addPlottable(colorMap);
-    int nx = static_cast<int>(Nx);
-    int ny = static_cast<int>(Ny);
-    colorMap->data()->setSize(nx, ny); // we want the color map to have nx * ny data points
+
+    colorMap->data()->setSize(Nx, Ny); // we want the color map to have nx * ny data points
     colorMap->data()->setRange(QCPRange(0, 1), QCPRange(0, 1)); // and span the coordinate range 0..1 in both key (x) and value (y) dimensions
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
     Cell* array = (Cell*)arr;
-    for (int xIndex=0; xIndex<nx; ++xIndex)
-        for (int yIndex=0; yIndex<ny; ++yIndex)
-            colorMap->data()->setCell(xIndex, yIndex, array[xIndex*nx + yIndex].r);
+    for (int xIndex = 1; xIndex < bNx - 1; ++xIndex)
+        for (int yIndex = 1; yIndex < bNy - 1; ++yIndex)
+            colorMap->data()->setCell(xIndex-1, yIndex-1, array[xIndex * bNy + yIndex].r);
 
-    colorMap->data()->setCell(0, 0, 10); //hack!
+    //colorMap->data()->setCell(0, 0, 10); //hack!
 
     // add a color scale:
     QCPColorScale *colorScale = new QCPColorScale(customPlot);

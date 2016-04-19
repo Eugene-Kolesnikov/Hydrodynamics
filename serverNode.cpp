@@ -19,12 +19,11 @@ ServerNode::~ServerNode()
 
 void ServerNode::runNode()
 {
-    //for(int i = 0; i < 11; ++i) {
     shareInitField();
     loadUpdatedField();
     plotDenseField();
+
     Log << "Plotted dense field";
-    //}
 }
 
 void ServerNode::initDenseField()
@@ -34,12 +33,12 @@ void ServerNode::initDenseField()
     double d1 = 1.0 / 3.0;
     double d2 = 2.0 / 3.0;
     double del = 0.1;
-    m_Field = new Cell [m_Nx * m_Ny];
-    for (int xIndex = 0; xIndex < m_Nx; ++xIndex)
+    m_Field = new Cell [m_bNx * m_bNy];
+    for (int xIndex = 1; xIndex < m_bNx-1; ++xIndex)
     {
-        for (int yIndex = 0; yIndex < m_Ny; ++yIndex)
+        for (int yIndex = 1; yIndex < m_bNy-1; ++yIndex)
         {
-            covert2Dto1D(xIndex, yIndex, &id);
+            id = covert2Dto1D(xIndex, yIndex);
             cellToCoord(xIndex, yIndex, &x, &y);
             if(y < d1 - del) {
                 m_Field[id].r = 1;
@@ -81,25 +80,19 @@ void ServerNode::shareInitField()
     int numCompNodes = m_size - 1; // last one is a server node
     int first_node = 0;
     int last_node = m_size - 2;
-    int numColumns = m_Nx;
-    int intNumColumns = numColumns / numCompNodes;
-    int intNumPoints = (intNumColumns + 2) * m_Ny; // (adding 2 columns of halo points)
-    int edgeNumPoints = (intNumColumns + 1) * m_Ny; // (adding 1 column of halo points)
-    int intNumShift = intNumColumns * m_Ny; // `send_address` shift for internal blocks
-    int edgeNumShift = (intNumColumns - 1) * m_Ny; // `send_address` shift for the first block
+    int numActualColumns = m_Nx;
+    int numColumns = numActualColumns / numCompNodes;
+    int numPoints = (numColumns + 2) * m_bNy; // (adding 2 columns of halo points)
+    int numShift = numColumns * m_bNy; // `send_address` shift for internal blocks
     Cell* send_address = m_Field;
 
     // sending data to other nodes
-    MPI_Send(send_address, edgeNumPoints, MPI_CellType, first_node, 0, MPI_COMM_WORLD );
-    send_address += edgeNumShift;
-    Log << "Data sent to the 0 node.";
-    for(int node = first_node + 1; node < last_node; ++node) {
-        MPI_Send(send_address, intNumPoints, MPI_CellType, node, 0, MPI_COMM_WORLD );
-        send_address += intNumShift;
-        Log << (std::string("Data sent to the ") + std::to_string(node) + std::string(" node.")).c_str();
+    for(int node = first_node; node <= last_node; ++node) {
+        Log << (std::string("Try to send ") + std::to_string(numPoints) + std::string(" amount of data to node ") + std::to_string(node)).c_str();
+        MPI_Send(send_address, numPoints, MPI_CellType, node, 0, MPI_COMM_WORLD );
+        send_address += numShift;
+        Log << (std::string("Data sent to the node ") + std::to_string(node)).c_str();
     }
-    MPI_Send(send_address, edgeNumPoints, MPI_CellType, last_node, 0, MPI_COMM_WORLD );
-    Log << (std::string("Data sent to the ") + std::to_string(last_node) + std::string(" node.")).c_str();
 
     // make sure that every one has it's par of data
     MPI_Barrier(MPI_COMM_WORLD);
@@ -113,14 +106,16 @@ void ServerNode::loadUpdatedField()
     int last_node = m_size - 2;
     int numColumns = m_Nx;
     int intNumColumns = numColumns / numCompNodes;
-    int intNumShift = intNumColumns * m_Ny;
+    int intNumShift = intNumColumns * m_bNy;
 
     MPI_Status status;
     Cell* recv_address = m_Field;
     for(int node = first_node; node <= last_node; ++node) {
-        MPI_Recv(recv_address, intNumShift, MPI_CellType, node, MPI_ANY_TAG, MPI_COMM_WORLD, &status );
-        recv_address += intNumShift;
-        Log << (std::string("Data recieved from the ") + std::to_string(node) + std::string(" node.")).c_str();
+        int num = intNumShift + (node == first_node || node == last_node) * m_bNy;
+        Log << (std::string("Try to recieve ") + std::to_string(num) + std::string(" amount of data from node ") + std::to_string(node)).c_str();
+        MPI_Recv(recv_address, num, MPI_CellType, node, MPI_ANY_TAG, MPI_COMM_WORLD, &status );
+        recv_address += num;
+        Log << (std::string("Data recieved from the node ") + std::to_string(node)).c_str();
     }
 
     MPI_Barrier(MPI_COMM_WORLD);
@@ -140,13 +135,13 @@ void ServerNode::cellToCoord(int xIndex, int yIndex, double* x, double* y)
 {
     double hx = 1.0 / static_cast<double>(m_Nx);
     double hy = 1.0 / static_cast<double>(m_Ny);
-    *x = hx * xIndex;
-    *y = hy * yIndex;
+    *x = hx * (xIndex-1);
+    *y = hy * (yIndex-1);
 }
 
-void ServerNode::covert2Dto1D(int xIndex, int yIndex, int* id)
+int ServerNode::covert2Dto1D(int xIndex, int yIndex)
 {
-    *id = xIndex * m_Ny + yIndex;
+    return xIndex * m_bNy + yIndex;
 }
 
 void ServerNode::setArgcArgv(int t_argc, char** t_argv)
@@ -186,6 +181,5 @@ std::string ServerNode::getFilename()
         filename += "0";
     }
     filename += (std::to_string(m_fileCount) + ".png");
-    //std::cout << filename << std::endl;
     return filename;
 }

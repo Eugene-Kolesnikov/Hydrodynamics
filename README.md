@@ -20,4 +20,3 @@ Execute the application:
 ### TODO
 -  UML диаграмма программы
 -  Разобраться как работать с [ffmpeg](https://trac.ffmpeg.org/wiki/Create%20a%20video%20slideshow%20from%20images).
--  Добавить граничные ячейки.

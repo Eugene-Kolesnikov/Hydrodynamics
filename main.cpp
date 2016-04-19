@@ -94,10 +94,6 @@ void parseCmdArgv(int argc, char** argv, int* Nx, int* Ny, std::string& gui_dl)
 					*Ny = atoi(optarg);
 				else if(opt == gui)
 					gui_dl = std::string(optarg);
-				//printf("option %s", long_options[option_index].name);
-				//if (optarg)
-				//	printf(" with arg %s", optarg);
-				//printf("\n");
 			default:
             	break;
         }
