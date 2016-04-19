@@ -32,10 +32,10 @@ private:
     char** m_argv;
     bool m_loadedGui;
     void* m_guiLibHandle;
-    int (*QplotField)(int argc, char** argv, double* denseField, int Nx, int Ny, const char* filename);
+    int (*QplotField)(int argc, char** argv, void* Field, int Nx, int Ny, const char* filename);
 
 private:
-    double* m_denseField;
+    Cell* m_Field;
     int m_fileCount;
     logging::FileLogger Log;
 };

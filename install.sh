@@ -13,4 +13,5 @@ cd ./build/ &&
 touch execute.sh &&
 chmod 777 execute.sh &&
 echo "#!/usr/bin/env bash" >> ./execute.sh &&
-echo "mpiexec -l -np 5 ./hydrodynamics -gui libguiPlot.1.0.0.dylib -nx 100 -ny 100" >> ./execute.sh
+echo "mpiexec -l -np 5 ./hydrodynamics -gui libguiPlot.1.0.0.dylib -nx 100 -ny 100" >> ./execute.sh &&
+mkdir img log

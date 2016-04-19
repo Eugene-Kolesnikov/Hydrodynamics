@@ -3,7 +3,11 @@
 #include "serverNode.h"
 #include <getopt.h>
 #include <stdlib.h>
+#include "cell.h"
 
+MPI_Datatype MPI_CellType;
+
+void createMpiStructType();
 void parseCmdArgv(int argc, char** argv, int* Nx, int* Ny, std::string& gui_dl);
 
 int rank, size;
@@ -16,6 +20,8 @@ int main(int argc, char** argv){
 	MPI_Init (&argc, &argv);
 	MPI_Comm_rank (MPI_COMM_WORLD, &rank); // номер текущего процесса
     MPI_Comm_size (MPI_COMM_WORLD, &size); // число процессов
+
+	createMpiStructType(); // create necessary `MPI_CellType` for MPI transfer system
 
 	parseCmdArgv(argc, argv, &Nx, &Ny, gui_dl);
 	if((Nx == -1 || Ny == -1) && rank == size - 1) {
@@ -38,6 +44,22 @@ int main(int argc, char** argv){
 
 	MPI_Finalize();
 	return 0;
+}
+
+void createMpiStructType()
+{
+	const int nitems = 4;
+    int blocklengths[4] = {1,1,1,1};
+    MPI_Datatype types[4] = {MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE, MPI_DOUBLE};
+    MPI_Aint offsets[4];
+
+    offsets[0] = offsetof(Cell, r);
+    offsets[1] = offsetof(Cell, u);
+	offsets[2] = offsetof(Cell, v);
+	offsets[3] = offsetof(Cell, e);
+
+    MPI_Type_create_struct(nitems, blocklengths, offsets, types, &MPI_CellType);
+    MPI_Type_commit(&MPI_CellType);
 }
 
 void parseCmdArgv(int argc, char** argv, int* Nx, int* Ny, std::string& gui_dl)

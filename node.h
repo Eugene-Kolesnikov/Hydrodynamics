@@ -1,6 +1,10 @@
 #ifndef NODE_H
 #define NODE_H
 
+#include <mpi.h>
+#include "cell.h"
+extern MPI_Datatype MPI_CellType;
+
 class Node
 {
 public:

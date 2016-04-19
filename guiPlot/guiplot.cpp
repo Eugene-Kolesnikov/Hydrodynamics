@@ -1,9 +1,10 @@
 #include "guiplot.h"
 #include <QApplication>
 #include "qcustomplot.h"
+#include "../cell.h"
 
 extern "C"
-int plotField(int argc, char** argv, double* array, int Nx, int Ny, const char* filename)
+int plotField(int argc, char** argv, void* arr, int Nx, int Ny, const char* filename)
 {
     QApplication a(argc, argv);
     QCustomPlot* customPlot = new QCustomPlot();
@@ -20,9 +21,10 @@ int plotField(int argc, char** argv, double* array, int Nx, int Ny, const char* 
     colorMap->data()->setSize(nx, ny); // we want the color map to have nx * ny data points
     colorMap->data()->setRange(QCPRange(0, 1), QCPRange(0, 1)); // and span the coordinate range 0..1 in both key (x) and value (y) dimensions
     // now we assign some data, by accessing the QCPColorMapData instance of the color map:
+    Cell* array = (Cell*)arr;
     for (int xIndex=0; xIndex<nx; ++xIndex)
         for (int yIndex=0; yIndex<ny; ++yIndex)
-            colorMap->data()->setCell(xIndex, yIndex, array[xIndex*nx + yIndex]);
+            colorMap->data()->setCell(xIndex, yIndex, array[xIndex*nx + yIndex].r);
 
     colorMap->data()->setCell(0, 0, 10); //hack!
 

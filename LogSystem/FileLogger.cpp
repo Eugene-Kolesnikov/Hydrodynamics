@@ -63,6 +63,6 @@ char* FileLogger::getTime(const struct tm *timeptr)
 
 std::string createLogFilename(int node)
 {
-    std::string filename = "node" + std::to_string(node) + ".log";
+    std::string filename = "log/node" + std::to_string(node) + ".log";
     return filename;
 }

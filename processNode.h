@@ -14,8 +14,10 @@ public:
 
 private:
     void initBlock();
+    void sendBlockToServer();
 
 private:
+    Cell* m_Field;
     logging::FileLogger Log;
 };
 
