@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include <iostream>
 #include <getopt.h>
+#include <cmath>
 
 ServerNode::ServerNode(const int rank, const int size, const int Nx, const int Ny):
     Node::Node(rank, size, Nx, Ny), m_loadedGui(false), m_fileCount(0),
@@ -34,6 +35,13 @@ void ServerNode::initDenseField()
     double d2 = 2.0 / 3.0;
     double del = 0.1;
     m_Field = new Cell [m_bNx * m_bNy];
+    // Gugonio conditions:
+    // x := rho3, y := v3, z := e3
+    // Correct: https://www.wolframalpha.com/input/?i=d*(x-5)+%3D+x*y,+d*x*y+%3D+(2%2F3*x*z%2Bx*y%5E2)+-+2%2F3,+d*(x*(z%2B1%2F2*y%5E2)-1)+%3D+x*y*(z%2B2%2F3*z%2B1%2F2*y%5E2),+d+%3D+2%2F3*sqrt(2)
+    // Incorrect: https://www.wolframalpha.com/input/?i=x*(2%2F3*sqrt(2)-y)%3D10%2F3*sqrt(2),+x*y*(2%2F3*sqrt(2)-y)+%2B+2%2F3*x*z%3D2%2F3,+5%2F3*z%2B1%2F2*(2%2F3*sqrt(2)-y)%5E2%3D31%2F18
+    double r3 = 80.0 / 7.0;
+    double v3 = 3.0 / (4.0 * std::sqrt(2));
+    double e3 = 133.0 / 320.0;
     for (int xIndex = 1; xIndex < m_bNx-1; ++xIndex)
     {
         for (int yIndex = 1; yIndex < m_bNy-1; ++yIndex)
@@ -42,31 +50,31 @@ void ServerNode::initDenseField()
             cellToCoord(xIndex, yIndex, &x, &y);
             if(y < d1 - del) {
                 m_Field[id].r = 1;
-                m_Field[id].u = 1;
-                m_Field[id].v = 1;
+                m_Field[id].u = 0;
+                m_Field[id].v = 0;
                 m_Field[id].e = 1;
             } else if(y < d1) {
                 if(x < d1 || x > 2.0*d1) {
                     m_Field[id].r = 1;
-                    m_Field[id].u = 1;
-                    m_Field[id].v = 1;
+                    m_Field[id].u = 0;
+                    m_Field[id].v = 0;
                     m_Field[id].e = 1;
                 } else {
                     m_Field[id].r = 5;
-                    m_Field[id].u = 5;
-                    m_Field[id].v = 5;
-                    m_Field[id].e = 5;
+                    m_Field[id].u = 0;
+                    m_Field[id].v = 0;
+                    m_Field[id].e = 0.2;
                 }
             } else if(y < d2) {
                 m_Field[id].r = 5;
-                m_Field[id].u = 5;
-                m_Field[id].v = 5;
-                m_Field[id].e = 5;
+                m_Field[id].u = 0;
+                m_Field[id].v = 0;
+                m_Field[id].e = 0.2;
             } else {
-                m_Field[id].r = 7;
-                m_Field[id].u = 7;
-                m_Field[id].v = 7;
-                m_Field[id].e = 7;
+                m_Field[id].r = r3;
+                m_Field[id].u = 0;
+                m_Field[id].v = v3;
+                m_Field[id].e = e3;
             }
         }
     }
