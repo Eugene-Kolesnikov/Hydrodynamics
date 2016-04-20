@@ -16,32 +16,32 @@
     }																	         \
 } while (0)
 
-extern "C" void AllocateGpuMemory(void** ptr, int size, void* Log)
+extern "C" void cu_AllocateGpuMemory(void** ptr, int size, void* Log)
 {
     HANDLE_CUERROR( cudaMalloc( ptr, size ) );
 }
 
-extern "C" void AllocateHostPinnedMemory(void** ptr, int size, void* Log)
+extern "C" void cu_AllocateHostPinnedMemory(void** ptr, int size, void* Log)
 {
     HANDLE_CUERROR( cudaHostAlloc(ptr, size, cudaHostAllocDefault) );
 }
 
-extern "C" void FreeGpuMemory(Cell* ptr, void* Log)
+extern "C" void cu_FreeGpuMemory(Cell* ptr, void* Log)
 {
     HANDLE_CUERROR(cudaFree(ptr));
 }
 
-extern "C" void FreeHostPinnedMemory(Cell* ptr, void* Log)
+extern "C" void cu_FreeHostPinnedMemory(Cell* ptr, void* Log)
 {
     HANDLE_CUERROR(cudaFreeHost(ptr));
 }
 
-extern "C" void loadDataToGpu(Cell* dev, Cell* host, int size, void* Log)
+extern "C" void cu_loadDataToGpu(Cell* dev, Cell* host, int size, void* Log)
 {
     HANDLE_CUERROR( cudaMemcpy( dev, host, size, cudaMemcpyHostToDevice ) );
 }
 
-extern "C" void loadDataToHost(Cell* host, Cell* dev, int size, void* Log)
+extern "C" void cu_loadDataToHost(Cell* host, Cell* dev, int size, void* Log)
 {
     HANDLE_CUERROR( cudaMemcpy( host, dev, size, cudaMemcpyDeviceToHost ) );
 }

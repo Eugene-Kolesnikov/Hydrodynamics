@@ -13,31 +13,31 @@ ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int
     m_columns = (intNumColumns + 2);
     m_Field = new Cell[m_columns*m_bNy];
     Log << (std::string("Created array of ") + std::to_string(intNumPoints) + std::string(" elements.")).c_str();
-    AllocateHostPinnedMemory((void **)&m_haloElements, numHaloElements * sizeof(Cell), &Log);
+    cu_AllocateHostPinnedMemory((void **)&m_haloElements, numHaloElements * sizeof(Cell), &Log);
     Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" elements on Host in pinned memory using cudaHostAlloc.")).c_str();
-    AllocateGpuMemory((void**)&m_device_Field, intNumPoints * sizeof(Cell), &Log);
+    cu_AllocateGpuMemory((void**)&m_device_Field, intNumPoints * sizeof(Cell), &Log);
     Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" elements on GPU.")).c_str();
 }
 
 ProcessNode::~ProcessNode()
 {
     delete m_Field;
-    FreeGpuMemory(m_device_Field, &Log);
-    FreeHostPinnedMemory(m_haloElements, &Log);
+    cu_FreeGpuMemory(m_device_Field, &Log);
+    cu_FreeHostPinnedMemory(m_haloElements, &Log);
 }
 
 void ProcessNode::runNode()
 {
     int intNumPoints = m_columns * m_bNy;
     initBlock();
-    loadDataToGpu(m_device_Field, m_Field, intNumPoints * sizeof(Cell), &Log);
+    cu_loadDataToGpu(m_device_Field, m_Field, intNumPoints * sizeof(Cell), &Log);
     Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements to GPU.")).c_str();
     while(m_time < TOTAL_TIME) {
         Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
         updateBorders(); //cpu version
         // TODO: compute CUDA kernel
         // TODO: exchange halo points
-        loadDataToHost(m_Field, m_device_Field, intNumPoints * sizeof(Cell), &Log);
+        cu_loadDataToHost(m_Field, m_device_Field, intNumPoints * sizeof(Cell), &Log);
         Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements from GPU.")).c_str();
         sendBlockToServer();
         m_time += TAU;
