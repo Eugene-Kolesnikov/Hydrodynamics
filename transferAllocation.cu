@@ -1,34 +1,11 @@
 #include <cuda.h>
 #include "cell.h"
 #include "LogSystem/FileLogger.hpp"
-
-#define HANDLE_CUERROR(call) {										             \
-    cudaError err = call;												         \
-    if(err != cudaSuccess) {											         \
-        *((logging::FileLogger*)Log) << _ERROR_                                  \
-                       << (std::string("CUDA error in file '") +                 \
-                           std::string(__FILE__) +  std::string("' in line ") +  \
-                           std::to_string(__LINE__) + std::string(": ") +        \
-                           std::string(cudaGetErrorString(err))).c_str();        \
-        fprintf(stderr, "CUDA error in file '%s' in line %i: %s.\n",	         \
-            __FILE__, __LINE__, cudaGetErrorString(err));				         \
-        exit(1);														         \
-    }																	         \
-} while (0)
-
-extern "C" void cu_AllocateGpuMemory(void** ptr, int size, void* Log)
-{
-    HANDLE_CUERROR( cudaMalloc( ptr, size ) );
-}
+#include "cu_gpuProperties.h"
 
 extern "C" void cu_AllocateHostPinnedMemory(void** ptr, int size, void* Log)
 {
     HANDLE_CUERROR( cudaHostAlloc(ptr, size, cudaHostAllocDefault) );
-}
-
-extern "C" void cu_FreeGpuMemory(Cell* ptr, void* Log)
-{
-    HANDLE_CUERROR(cudaFree(ptr));
 }
 
 extern "C" void cu_FreeHostPinnedMemory(Cell* ptr, void* Log)
@@ -36,12 +13,42 @@ extern "C" void cu_FreeHostPinnedMemory(Cell* ptr, void* Log)
     HANDLE_CUERROR(cudaFreeHost(ptr));
 }
 
-extern "C" void cu_loadDataToGpu(Cell* dev, Cell* host, int size, void* Log)
+extern "C" void cu_AllocateFieldMemory(void* prop, int size)
 {
-    HANDLE_CUERROR( cudaMemcpy( dev, host, size, cudaMemcpyHostToDevice ) );
+    cu_gpuProperties* gpu = (cu_gpuProperties*) prop;
+    logging::FileLogger* Log = gpu->Log;
+    HANDLE_CUERROR( cudaMalloc( (void**)&gpu->m_Field, size ) );
 }
 
-extern "C" void cu_loadDataToHost(Cell* host, Cell* dev, int size, void* Log)
+extern "C" void cu_AllocateHaloMemory(void* prop, int size)
 {
-    HANDLE_CUERROR( cudaMemcpy( host, dev, size, cudaMemcpyDeviceToHost ) );
+    cu_gpuProperties* gpu = (cu_gpuProperties*) prop;
+    logging::FileLogger* Log = gpu->Log;
+    HANDLE_CUERROR( cudaMalloc( (void**)&gpu->m_halo, size ) );
+}
+
+extern "C" void cu_loadFieldData(void* prop, Cell* host, int size, int type)
+{ // type = { cu_loadFromDeviceToHost, cu_loadFromHostToDevice }
+    cu_gpuProperties* gpu = (cu_gpuProperties*) prop;
+    logging::FileLogger* Log = gpu->Log;
+    if(type == cu_loadFromDeviceToHost) {
+        HANDLE_CUERROR( cudaMemcpy( host, gpu->m_Field, size, cudaMemcpyDeviceToHost ) );
+    } else if(type == cu_loadFromHostToDevice) {
+        HANDLE_CUERROR( cudaMemcpy( gpu->m_Field, host, size, cudaMemcpyHostToDevice ) );
+    } else {
+        *Log << _WARNING_ << "Wrong 'type' in 'cu_loadFieldData'. Nothing will be done.";
+    }
+}
+
+extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type)
+{ // type = { cu_loadFromDeviceToHost, cu_loadFromHostToDevice }
+    cu_gpuProperties* gpu = (cu_gpuProperties*) prop;
+    logging::FileLogger* Log = gpu->Log;
+    if(type == cu_loadFromDeviceToHost) {
+        HANDLE_CUERROR( cudaMemcpy( host, gpu->m_halo, size, cudaMemcpyDeviceToHost ) );
+    } else if(type == cu_loadFromHostToDevice) {
+        HANDLE_CUERROR( cudaMemcpy( gpu->m_halo, host, size, cudaMemcpyHostToDevice ) );
+    } else {
+        *Log << _WARNING_ << "Wrong 'type' in 'cu_loadHaloData'. Nothing will be done.";
+    }
 }

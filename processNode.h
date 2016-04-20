@@ -4,12 +4,16 @@
 #include "LogSystem/FileLogger.hpp"
 #include "node.h"
 
-extern "C" void cu_AllocateGpuMemory(void** ptr, int size, void* Log);
 extern "C" void cu_AllocateHostPinnedMemory(void** ptr, int size, void* Log);
-extern "C" void cu_FreeGpuMemory(Cell* ptr, void* Log);
 extern "C" void cu_FreeHostPinnedMemory(Cell* ptr, void* Log);
-extern "C" void cu_loadDataToGpu(Cell* dev, Cell* host, int size, void* Log);
-extern "C" void cu_loadDataToHost(Cell* host, Cell* dev, int size, void* Log);
+extern "C" void* cu_createGpuProperties(logging::FileLogger* log);
+extern "C" void cu_destroyGpuProperties(void* prop);
+extern "C" void cu_AllocateFieldMemory(void* prop, int size);
+extern "C" void cu_AllocateHaloMemory(void* prop, int size);
+// type = { cu_loadFromDeviceToHost, cu_loadFromHostToDevice }
+extern "C" void cu_loadFieldData(void* prop, Cell* host, int size, int type);
+extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type);
+
 
 class ProcessNode : public Node
 {
@@ -33,7 +37,7 @@ private:
     double m_time;
 
 private:
-    Cell* m_device_Field;
+    void* cu_gpuProp;
 };
 
 #endif // PROCESSNODE_H
