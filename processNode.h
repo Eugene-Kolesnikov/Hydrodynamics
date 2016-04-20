@@ -9,10 +9,10 @@ extern "C" void cu_FreeHostPinnedMemory(Cell* ptr, void* Log);
 extern "C" void* cu_createGpuProperties(logging::FileLogger* log);
 extern "C" void cu_destroyGpuProperties(void* prop);
 extern "C" void cu_AllocateFieldMemory(void* prop, int size);
-extern "C" void cu_AllocateHaloMemory(void* prop, int size);
 // type = { cu_loadFromDeviceToHost, cu_loadFromHostToDevice }
 extern "C" void cu_loadFieldData(void* prop, Cell* host, int size, int type);
 extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type);
+extern "C" void cu_loadBorderData(void* prop, Cell* host, int size, int type);
 
 
 class ProcessNode : public Node
@@ -28,10 +28,12 @@ private:
     void sendBlockToServer();
     void updateBorders();
     void setStopCheckMark();
+    void exchangeBorderPoints();
 
 private:
     Cell* m_Field;
     Cell* m_haloElements;
+    Cell* m_borderElements;
     int m_columns;
     logging::FileLogger Log;
     double m_time;

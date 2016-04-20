@@ -1,5 +1,6 @@
 #include "processNode.h"
 #include <mpi.h>
+#include "debug.h"
 
 ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int Ny):
     Node::Node(rank, size, Nx, Ny),
@@ -11,16 +12,16 @@ ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int
     int numColumns = m_Nx;
     int intNumColumns = numColumns / numCompNodes;
     int intNumPoints = (intNumColumns + 2) * m_bNy; // (adding 2 columns of halo points)
-    int numHaloElements = 2 * m_bNy;
+    int numHaloElements = 2 * m_Ny;
     m_columns = (intNumColumns + 2);
-    m_Field = new Cell[m_columns*m_bNy];
-    Log << (std::string("Created array of ") + std::to_string(intNumPoints) + std::string(" elements.")).c_str();
-    cu_AllocateHostPinnedMemory((void **)&m_haloElements, numHaloElements * sizeof(Cell), &Log);
+    m_Field = new Cell[intNumPoints];
+    Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" Field elements.")).c_str();
+    m_borderElements = new Cell[numHaloElements]; // the number of border elements equal to the number of halo elements
+    Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" border elements.")).c_str();
+    cu_AllocateHostPinnedMemory((void **)&m_haloElements, numHaloElements, &Log);
     Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" elements on Host in pinned memory using cudaHostAlloc.")).c_str();
-    cu_AllocateFieldMemory(cu_gpuProp, intNumPoints * sizeof(Cell));
+    cu_AllocateFieldMemory(cu_gpuProp, intNumPoints);
     Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" Field elements on GPU.")).c_str();
-    cu_AllocateHaloMemory(cu_gpuProp, numHaloElements * sizeof(Cell));
-    Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" Halo elements on GPU.")).c_str();
 }
 
 ProcessNode::~ProcessNode()
@@ -34,14 +35,26 @@ void ProcessNode::runNode()
 {
     int intNumPoints = m_columns * m_bNy;
     initBlock();
-    cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints * sizeof(Cell), cu_loadFromHostToDevice);
+    #ifdef _DEBUG_
+        updateBorders(); //cpu version
+        writeFieldPart(m_Field, m_columns, m_bNy, Log, "Part of x-velocity field with updated borders");
+    #endif
+    cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromHostToDevice);
     Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements to GPU.")).c_str();
     while(m_time < TOTAL_TIME) {
         Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
-        updateBorders(); //cpu version
+        // TODO: updateBorders() gpu version
         // TODO: compute CUDA kernel
         // TODO: exchange halo points
-        cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints * sizeof(Cell), cu_loadFromDeviceToHost);
+        cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
+        // Debug -------------------
+        #ifdef _DEBUG_
+            writeFieldPart(m_borderElements, 2, m_Ny, Log, "Received border elements from GPU");
+        #endif
+        exchangeBorderPoints();
+        cu_loadHaloData(cu_gpuProp, m_haloElements, m_Ny, cu_loadFromHostToDevice);
+        // cudaDeviceSynchronize
+        cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
         Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements from GPU.")).c_str();
         sendBlockToServer();
         m_time += TAU;
@@ -83,6 +96,26 @@ void ProcessNode::sendBlockToServer()
     MPI_Send(snd_address, sendSize, MPI_CellType, server_process, 0, MPI_COMM_WORLD );
     MPI_Barrier(MPI_COMM_WORLD);
     Log << "Performed barrier synchronization.";
+}
+
+void ProcessNode::exchangeBorderPoints()
+{
+    /*MPI_Status status;
+    int left_neighbor = (m_rank > 0) ? (m_rank - 1) : MPI_PROC_NULL;
+    int right_neighbor = (m_rank < m_size - 2) ? (m_rank + 1) : MPI_PROC_NULL;
+    int left_border_offset = m_bNy + 1; // skip the first boundary cell
+    int right_border_offset = (m_columns - 1) * m_Ny + 1; // skip the first boundary cell
+    int left_halo_offset = 0;
+    int right_halo_offset = m_Ny;
+    int num_halo_points = m_Ny;*/
+
+    /* Send data to left, get data from right */
+    //MPI_Sendrecv(m_haloElements + left_halo_offset, num_halo_points, MPI_CellType, left_neighbor, m_rank, h_right_halo,
+    //    num_halo_points, MPI_CellType, right_neighbor, m_rank+1, MPI_COMM_WORLD, &status );
+    /* Send data to right, get data from left */
+    //MPI_Sendrecv(m_haloElements + right_halo_offset, num_halo_points, MPI_CellType, right_neighbor, m_rank, h_left_halo,
+    //    num_halo_points, MPI_CellType, left_neighbor, m_rank-1, MPI_COMM_WORLD, &status );
+
 }
 
 void ProcessNode::updateBorders()

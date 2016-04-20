@@ -1,6 +1,8 @@
 #ifndef CELL_H
 #define CELL_H
 
+//#define _DEBUG_
+
 #define cu_loadFromDeviceToHost 0
 #define cu_loadFromHostToDevice 1
 
