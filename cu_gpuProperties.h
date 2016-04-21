@@ -27,8 +27,8 @@ public:
     logging::FileLogger* Log;
     Cell* m_Field;
     int m_Field_size;
-    //cudaStream_t streamInternal;
-    //cudaStream_t streamHalo;
+    cudaStream_t streamInternal;
+    cudaStream_t streamHaloBorder;
 };
 
 #endif

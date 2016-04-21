@@ -18,16 +18,16 @@ ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int
     Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" Field elements.")).c_str();
     m_borderElements = new Cell[numHaloElements]; // the number of border elements equal to the number of halo elements
     Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" border elements.")).c_str();
-    cu_AllocateHostPinnedMemory((void **)&m_haloElements, numHaloElements, &Log);
+    cu_allocateHostPinnedMemory((void **)&m_haloElements, numHaloElements, &Log);
     Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" elements on Host in pinned memory using cudaHostAlloc.")).c_str();
-    cu_AllocateFieldMemory(cu_gpuProp, intNumPoints);
+    cu_allocateFieldMemory(cu_gpuProp, intNumPoints);
     Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" Field elements on GPU.")).c_str();
 }
 
 ProcessNode::~ProcessNode()
 {
     delete m_Field;
-    cu_FreeHostPinnedMemory(m_haloElements, &Log);
+    cu_freeHostPinnedMemory(m_haloElements, &Log);
     cu_destroyGpuProperties(cu_gpuProp);
 }
 
@@ -40,23 +40,25 @@ void ProcessNode::runNode()
         writeFieldPart(m_Field, m_columns, m_bNy, Log, "Part of x-velocity field with updated borders");
     #endif
     cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromHostToDevice);
-    Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements to GPU.")).c_str();
     while(m_time < TOTAL_TIME) {
         Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
         // TODO: updateBorders() gpu version
-        // TODO: compute CUDA kernel
-        // TODO: exchange halo points
+        // TODO: compute CUDA kernel for borders
+        // TODO: compute CUDA kernel for internal points
         cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
-        // Debug -------------------
         #ifdef _DEBUG_
             writeFieldPart(m_borderElements, 2, m_Ny, Log, "Received border elements from GPU");
         #endif
         exchangeBorderPoints();
         cu_loadHaloData(cu_gpuProp, m_haloElements, m_Ny, cu_loadFromHostToDevice);
-        // cudaDeviceSynchronize
+        /* `cu_loadFieldData` is performed with stream 'streamInternal' which doesn't require
+           the stream 'streamHaloBorder' to be synchronized to start loading data. It requires only
+           the computeBordersKernel to be finished which fulfills automatically because consequtive tasks
+           of one stream permorm consequently */
         cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
-        Log << (std::string("Transfered array of ") + std::to_string(intNumPoints) + std::string(" elements from GPU.")).c_str();
         sendBlockToServer();
+        cu_deviceSynchronize(); // whait while 'streamInternal' and 'streamHaloBorder' finish their work
+        Log << "Device successfully synchronized.";
         m_time += TAU;
     }
     setStopCheckMark();
@@ -100,22 +102,33 @@ void ProcessNode::sendBlockToServer()
 
 void ProcessNode::exchangeBorderPoints()
 {
-    /*MPI_Status status;
+    MPI_Status status;
     int left_neighbor = (m_rank > 0) ? (m_rank - 1) : MPI_PROC_NULL;
     int right_neighbor = (m_rank < m_size - 2) ? (m_rank + 1) : MPI_PROC_NULL;
-    int left_border_offset = m_bNy + 1; // skip the first boundary cell
-    int right_border_offset = (m_columns - 1) * m_Ny + 1; // skip the first boundary cell
-    int left_halo_offset = 0;
-    int right_halo_offset = m_Ny;
-    int num_halo_points = m_Ny;*/
+    int numPointsPerBorder = m_Ny;
+    int offset[2] = {0, numPointsPerBorder};
 
-    /* Send data to left, get data from right */
-    //MPI_Sendrecv(m_haloElements + left_halo_offset, num_halo_points, MPI_CellType, left_neighbor, m_rank, h_right_halo,
-    //    num_halo_points, MPI_CellType, right_neighbor, m_rank+1, MPI_COMM_WORLD, &status );
-    /* Send data to right, get data from left */
-    //MPI_Sendrecv(m_haloElements + right_halo_offset, num_halo_points, MPI_CellType, right_neighbor, m_rank, h_left_halo,
-    //    num_halo_points, MPI_CellType, left_neighbor, m_rank-1, MPI_COMM_WORLD, &status );
+    Log << (std::string("Try to send ") + std::to_string(numPointsPerBorder) +
+            std::string(" amount of data to 'node ") + std::to_string(left_neighbor) +
+            std::string("' and to recieve ") + std::to_string(numPointsPerBorder) +
+            std::string(" amount of data from 'node ") + std::to_string(right_neighbor) + std::string("'")).c_str();
+    /* Send left border to left node, get right halo from right node */
+    MPI_Sendrecv(m_borderElements + offset[0], numPointsPerBorder, MPI_CellType, left_neighbor, m_rank,
+                 m_haloElements + offset[1], numPointsPerBorder, MPI_CellType, right_neighbor, m_rank + 1, MPI_COMM_WORLD, &status );
+    Log << "Data successfully sent and recieved.";
 
+    Log << (std::string("Try to send ") + std::to_string(numPointsPerBorder) +
+         std::string(" amount of data to 'node ") + std::to_string(left_neighbor) +
+         std::string("' and to recieve ") + std::to_string(numPointsPerBorder) +
+         std::string(" amount of data from 'node ") + std::to_string(right_neighbor) + std::string("'")).c_str();
+    /* Send right border to right node, get left halo from left node */
+    MPI_Sendrecv(m_borderElements + offset[1], numPointsPerBorder, MPI_CellType, right_neighbor, m_rank,
+                 m_haloElements + offset[0], numPointsPerBorder, MPI_CellType, left_neighbor, m_rank - 1, MPI_COMM_WORLD, &status );
+    Log << "Data successfully sent and recieved.";
+    Log << "The process of exchanging halo points finished without errors.";
+    #ifdef _DEBUG_
+        writeFieldPart(m_haloElements, 2, m_Ny, Log, "Received halo elements from neighbor nodes");
+    #endif
 }
 
 void ProcessNode::updateBorders()

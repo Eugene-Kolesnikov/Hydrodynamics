@@ -1,7 +1,10 @@
 #include "cu_gpuProperties.h"
 
 cu_gpuProperties::cu_gpuProperties(logging::FileLogger* log):
-    Log(log), m_Field_size(0) {}
+    Log(log), m_Field_size(0) {
+        cudaStreamCreate(&streamInternal);
+        cudaStreamCreate(&streamHaloBorder);
+    }
 
 cu_gpuProperties::~cu_gpuProperties()
 {
