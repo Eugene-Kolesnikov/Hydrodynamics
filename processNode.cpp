@@ -199,5 +199,4 @@ void ProcessNode::setStopCheckMark()
         m_Field[0].r = -1;
         Log << "'Stop' marker is set.";
     }
-
 }
