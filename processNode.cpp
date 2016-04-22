@@ -6,7 +6,6 @@ ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int
     Node::Node(rank, size, Nx, Ny),
     Log(rank, createLogFilename(rank))
 {
-    cu_gpuProp = cu_createGpuProperties(&Log);
     Log << std::string("GPU properties created.").c_str();
     int numCompNodes = m_size - 1;
     int numColumns = m_Nx;
@@ -14,11 +13,12 @@ ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int
     int intNumPoints = (intNumColumns + 2) * m_bNy; // (adding 2 columns of halo points)
     int numHaloElements = 2 * m_Ny;
     m_columns = (intNumColumns + 2);
+    cu_gpuProp = cu_createGpuProperties(&Log, m_bNy, rank, size);
     m_Field = new Cell[intNumPoints];
     Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" Field elements.")).c_str();
     m_borderElements = new Cell[numHaloElements]; // the number of border elements equal to the number of halo elements
     Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" border elements.")).c_str();
-    cu_allocateHostPinnedMemory((void **)&m_haloElements, numHaloElements, &Log);
+    cu_allocateHostPinnedMemory((void**) &m_haloElements, numHaloElements, &Log);
     Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" elements on Host in pinned memory using cudaHostAlloc.")).c_str();
     cu_allocateFieldMemory(cu_gpuProp, intNumPoints);
     Log << (std::string("Allocated array of ") + std::to_string(intNumPoints) + std::string(" Field elements on GPU.")).c_str();
@@ -35,20 +35,20 @@ void ProcessNode::runNode()
 {
     int intNumPoints = m_columns * m_bNy;
     initBlock();
-    #ifdef _DEBUG_
-        updateBorders(); //cpu version
-        writeFieldPart(m_Field, m_columns, m_bNy, Log, "Part of x-velocity field with updated borders");
-    #endif
     cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromHostToDevice);
     while(m_time < TOTAL_TIME) {
         Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
-        // TODO: updateBorders() gpu version
+        cu_updateBorders(cu_gpuProp);
+        #ifdef _DEBUG_
+            cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
+            writeFieldPart(m_Field, m_columns, m_bNy, Log, "Part of x-velocity field with updated borders");
+        #endif
         // TODO: compute CUDA kernel for borders
-        // TODO: compute CUDA kernel for internal points
         cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
         #ifdef _DEBUG_
             writeFieldPart(m_borderElements, 2, m_Ny, Log, "Received border elements from GPU");
         #endif
+        // TODO: compute CUDA kernel for internal points while 'exchangeBorderPoints' executes
         exchangeBorderPoints();
         cu_loadHaloData(cu_gpuProp, m_haloElements, m_Ny, cu_loadFromHostToDevice);
         /* `cu_loadFieldData` is performed with stream 'streamInternal' which doesn't require
@@ -129,81 +129,6 @@ void ProcessNode::exchangeBorderPoints()
     #ifdef _DEBUG_
         writeFieldPart(m_haloElements, 2, m_Ny, Log, "Received halo elements from neighbor nodes");
     #endif
-}
-
-void ProcessNode::updateBorders()
-{
-    for (int yIndex = 0; yIndex < m_bNy; ++yIndex)
-    {
-        for (int xIndex = 0; xIndex < m_columns; ++xIndex)
-        {
-            if(m_rank == 0) {
-                if(xIndex == 0) { //left vertical line
-                    if(yIndex == 0 || yIndex == (m_bNy-1)) {
-                        m_Field[xIndex * m_bNy + yIndex].r =
-                        m_Field[xIndex * m_bNy + yIndex].u =
-                        m_Field[xIndex * m_bNy + yIndex].v =
-                        m_Field[xIndex * m_bNy + yIndex].e = 0.0;
-                    } else {
-                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[(xIndex+1) * m_bNy + yIndex].r;
-                        m_Field[xIndex * m_bNy + yIndex].u = -m_Field[(xIndex+1) * m_bNy + yIndex].u;
-                        m_Field[xIndex * m_bNy + yIndex].v = m_Field[(xIndex+1) * m_bNy + yIndex].v;
-                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[(xIndex+1) * m_bNy + yIndex].e;
-                    }
-                } else {
-                    if(yIndex == 0) { // lower horizontal line
-                        m_Field[xIndex * m_bNy].r = m_Field[xIndex * m_bNy + 1].r;
-                        m_Field[xIndex * m_bNy].u = m_Field[xIndex * m_bNy + 1].u;
-                        m_Field[xIndex * m_bNy].v = -m_Field[xIndex * m_bNy + 1].v;
-                        m_Field[xIndex * m_bNy].e = m_Field[xIndex * m_bNy + 1].e;
-                    } else if(yIndex == (m_bNy-1)) { // upper horizontal line
-                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[xIndex * m_bNy + yIndex - 1].r;
-                        m_Field[xIndex * m_bNy + yIndex].u = m_Field[xIndex * m_bNy + yIndex - 1].u;
-                        m_Field[xIndex * m_bNy + yIndex].v = -m_Field[xIndex * m_bNy + yIndex - 1].v;
-                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[xIndex * m_bNy + yIndex - 1].e;
-                    }
-                }
-            } else if(m_rank == (m_size - 2)) {
-                if(xIndex == (m_columns-1)) { //right vertical line
-                    if(yIndex == 0 || yIndex == (m_bNy-1)) {
-                        m_Field[xIndex * m_bNy + yIndex].r =
-                        m_Field[xIndex * m_bNy + yIndex].u =
-                        m_Field[xIndex * m_bNy + yIndex].v =
-                        m_Field[xIndex * m_bNy + yIndex].e = 0.0;
-                    } else {
-                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[(xIndex-1) * m_bNy + yIndex].r;
-                        m_Field[xIndex * m_bNy + yIndex].u = -m_Field[(xIndex-1) * m_bNy + yIndex].u;
-                        m_Field[xIndex * m_bNy + yIndex].v = m_Field[(xIndex-1) * m_bNy + yIndex].v;
-                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[(xIndex-1) * m_bNy + yIndex].e;
-                    }
-                } else {
-                    if(yIndex == 0) { // lower horizontal line
-                        m_Field[xIndex * m_bNy].r = m_Field[xIndex * m_bNy + 1].r;
-                        m_Field[xIndex * m_bNy].u = m_Field[xIndex * m_bNy + 1].u;
-                        m_Field[xIndex * m_bNy].v = -m_Field[xIndex * m_bNy + 1].v;
-                        m_Field[xIndex * m_bNy].e = m_Field[xIndex * m_bNy + 1].e;
-                    } else if(yIndex == (m_bNy-1)) { // upper horizontal line
-                        m_Field[xIndex * m_bNy + yIndex].r = m_Field[xIndex * m_bNy + yIndex - 1].r;
-                        m_Field[xIndex * m_bNy + yIndex].u = m_Field[xIndex * m_bNy + yIndex - 1].u;
-                        m_Field[xIndex * m_bNy + yIndex].v = -m_Field[xIndex * m_bNy + yIndex - 1].v;
-                        m_Field[xIndex * m_bNy + yIndex].e = m_Field[xIndex * m_bNy + yIndex - 1].e;
-                    }
-                }
-            } else {
-                if(yIndex == 0) { // lower horizontal line
-                    m_Field[xIndex * m_bNy].r = m_Field[xIndex * m_bNy + 1].r;
-                    m_Field[xIndex * m_bNy].u = m_Field[xIndex * m_bNy + 1].u;
-                    m_Field[xIndex * m_bNy].v = -m_Field[xIndex * m_bNy + 1].v;
-                    m_Field[xIndex * m_bNy].e = m_Field[xIndex * m_bNy + 1].e;
-                } else if(yIndex == (m_bNy-1)) { // upper horizontal line
-                    m_Field[xIndex * m_bNy + yIndex].r = m_Field[xIndex * m_bNy + yIndex - 1].r;
-                    m_Field[xIndex * m_bNy + yIndex].u = m_Field[xIndex * m_bNy + yIndex - 1].u;
-                    m_Field[xIndex * m_bNy + yIndex].v = -m_Field[xIndex * m_bNy + yIndex - 1].v;
-                    m_Field[xIndex * m_bNy + yIndex].e = m_Field[xIndex * m_bNy + yIndex - 1].e;
-                }
-            }
-        }
-    }
 }
 
 void ProcessNode::setStopCheckMark()

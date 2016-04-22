@@ -7,14 +7,14 @@
 extern "C" void cu_deviceSynchronize();
 extern "C" void cu_allocateHostPinnedMemory(void** ptr, int size, void* Log);
 extern "C" void cu_freeHostPinnedMemory(Cell* ptr, void* Log);
-extern "C" void* cu_createGpuProperties(logging::FileLogger* log);
+extern "C" void* cu_createGpuProperties(logging::FileLogger* log, int bNy, int rank, int totalRanks);
 extern "C" void cu_destroyGpuProperties(void* prop);
 extern "C" void cu_allocateFieldMemory(void* prop, int size);
 // type = { cu_loadFromDeviceToHost, cu_loadFromHostToDevice }
 extern "C" void cu_loadFieldData(void* prop, Cell* host, int size, int type);
 extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type);
 extern "C" void cu_loadBorderData(void* prop, Cell* host, int size, int type);
-
+extern "C" void cu_updateBorders(void* prop);
 
 class ProcessNode : public Node
 {
@@ -27,7 +27,6 @@ public:
 private:
     void initBlock();
     void sendBlockToServer();
-    void updateBorders();
     void setStopCheckMark();
     void exchangeBorderPoints();
 

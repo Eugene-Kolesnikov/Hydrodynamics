@@ -21,14 +21,21 @@
 
 class cu_gpuProperties {
 public:
-    cu_gpuProperties(logging::FileLogger* log);
+    cu_gpuProperties(logging::FileLogger* log, int bNy, int rank, int totalRanks);
     ~cu_gpuProperties();
 public:
     logging::FileLogger* Log;
+    int m_rank;
+    int m_totalRanks;
+public:
     Cell* m_Field;
     int m_Field_size;
+    int m_bNy;
+public:
     cudaStream_t streamInternal;
     cudaStream_t streamHaloBorder;
 };
+
+__global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int rank, int totalRanks);
 
 #endif

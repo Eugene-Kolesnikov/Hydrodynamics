@@ -8,7 +8,8 @@ CXXFLAGS = -c -O3 -std=c++11
 CFLAGS = -c
 NVCCFLAGS = -arch=sm_30 -O3 -ccbin=$(MPI_CXX) -std=c++11
 
-OBJECTS = main.o processNode.o serverNode.o LogSystem/FileLogger.o transferAllocation.o cu_gpuProperties.o debug.o
+OBJECTS = main.o processNode.o serverNode.o LogSystem/FileLogger.o \
+	transferAllocation.o cu_gpuProperties.o debug.o cu_fieldKernels.o
 
 all: $(OBJECTS)
 	$(NVCC) $(NVCCFLAGS) $(OBJECTS) -o hydrodynamics

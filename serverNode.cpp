@@ -59,7 +59,7 @@ void ServerNode::initDenseField()
             #ifdef _DEBUG_
             m_Field[id].r = 0;
             m_Field[id].u = debug_initNumber();
-            m_Field[id].v = 0;
+            m_Field[id].v = debug_initNumber();
             m_Field[id].e = 0;
             #else
             cellToCoord(xIndex, yIndex, &x, &y);
@@ -117,7 +117,8 @@ void ServerNode::shareInitField()
 
     // sending data to other nodes
     for(int node = first_node; node <= last_node; ++node) {
-        Log << (std::string("Try to send ") + std::to_string(numPoints) + std::string(" amount of data to node ") + std::to_string(node)).c_str();
+        Log << (std::string("Try to send ") + std::to_string(numPoints) +
+            std::string(" amount of data to node ") + std::to_string(node)).c_str();
         MPI_Send(send_address, numPoints, MPI_CellType, node, 0, MPI_COMM_WORLD );
         send_address += numShift;
         Log << (std::string("Data sent to the node ") + std::to_string(node)).c_str();
@@ -141,7 +142,8 @@ void ServerNode::loadUpdatedField()
     Cell* recv_address = m_Field;
     for(int node = first_node; node <= last_node; ++node) {
         int num = intNumShift + (node == first_node || node == last_node) * m_bNy;
-        Log << (std::string("Try to recieve ") + std::to_string(num) + std::string(" amount of data from node ") + std::to_string(node)).c_str();
+        Log << (std::string("Try to recieve ") + std::to_string(num) +
+            std::string(" amount of data from node ") + std::to_string(node)).c_str();
         MPI_Recv(recv_address, num, MPI_CellType, node, MPI_ANY_TAG, MPI_COMM_WORLD, &status );
         recv_address += num;
         Log << (std::string("Data recieved from the node ") + std::to_string(node)).c_str();
@@ -188,7 +190,8 @@ void ServerNode::loadGui(std::string gui_dl)
         fputs (dlerror(), stderr);
         noErrors = false;
     }
-    QplotField = (int (*)(int argc, char** argv, void* Field, int Nx, int Ny, const char* filename))dlsym(m_guiLibHandle, "plotField");
+    QplotField = (int (*)(int argc, char** argv, void* Field, int Nx,
+        int Ny, const char* filename))dlsym(m_guiLibHandle, "plotField");
     char *error;
     if (noErrors == true && (error = dlerror()) != NULL) {
         fputs(error, stderr);

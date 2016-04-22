@@ -85,7 +85,7 @@ extern "C" void cu_loadBorderData(void* prop, Cell* host, int size, int type)
         cudaStreamSynchronize(gpu->streamHaloBorder);
         *Log << "Stream 'streamHaloBorder' loaded border data from device to host and synchronized correctly.";
     } else if(type == cu_loadFromHostToDevice) {
-        HANDLE_CUERROR( cudaMemcpyAsync( gpu->m_Field + size + 3, host,
+        HANDLE_CUERROR( cudaMemcpyAsync( gpu->m_Field + (size + 2) + 1, host,
             size * sizeof(Cell), cudaMemcpyHostToDevice, gpu->streamHaloBorder ) );
         HANDLE_CUERROR( cudaMemcpyAsync( gpu->m_Field + gpu->m_Field_size - 2*(size + 2) + 1, host + size,
             size * sizeof(Cell), cudaMemcpyHostToDevice, gpu->streamHaloBorder ) );
