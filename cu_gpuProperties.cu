@@ -5,6 +5,11 @@ cu_gpuProperties::cu_gpuProperties(logging::FileLogger* log, int bNy, int rank, 
     Log(log), m_Field_size(0), m_bNy(bNy), m_rank(rank), m_totalRanks(totalRanks) {
         cudaStreamCreate(&streamInternal);
         cudaStreamCreate(&streamHaloBorder);
+
+        int numHaloElements = 2 * (m_bNy - 2);
+        HANDLE_CUERROR( cudaMalloc( (void**)&m_borders, numHaloElements * sizeof(Cell) ) );
+        m_borders_size = numHaloElements;
+        *Log << (std::string("Allocated array of ") + std::to_string(numHaloElements) + std::string(" border elements on GPU.")).c_str();
     }
 
 cu_gpuProperties::~cu_gpuProperties()
@@ -41,6 +46,22 @@ extern "C" void cu_updateBorders(void* prop)
     updateBordersKernel <<< verticalBlocks,
                             verticalThreads,
                             0, gpu->streamHaloBorder >>> (gpu->m_Field, Nx, Ny, 'v', gpu->m_rank, gpu->m_totalRanks);
+    cudaStreamSynchronize(gpu->streamHaloBorder);
+    *Log << "Successfully updated border elements.";
+}
+
+extern "C" void cu_computeBorderElements(void* prop)
+{
+    cu_gpuProperties* gpu = (cu_gpuProperties*) prop;
+    logging::FileLogger* Log = gpu->Log;
+    Cell* borders = gpu->m_borders;
+    Cell* field = gpu->m_Field;
+    int Ny = gpu->m_bNy - 2;
+    int verticalBlocks = floor((2*Ny - 1) / 256.0) + 1;
+    int verticalThreads = 256.0;
+    cu_computeBorders <<< verticalBlocks,
+                          verticalThreads,
+                          0, gpu->streamHaloBorder >>> (borders, field, Ny, gpu->m_Field_size);
     cudaStreamSynchronize(gpu->streamHaloBorder);
     *Log << "Successfully updated border elements.";
 }

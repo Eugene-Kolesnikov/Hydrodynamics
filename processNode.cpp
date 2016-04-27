@@ -44,6 +44,7 @@ void ProcessNode::runNode()
             writeFieldPart(m_Field, m_columns, m_bNy, Log, "Part of x-velocity field with updated borders");
         #endif
         // TODO: compute CUDA kernel for borders
+        cu_computeBorderElements(cu_gpuProp);
         cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
         #ifdef _DEBUG_
             writeFieldPart(m_borderElements, 2, m_Ny, Log, "Received border elements from GPU");
@@ -56,8 +57,9 @@ void ProcessNode::runNode()
            the computeBordersKernel to be finished which fulfills automatically because consequtive tasks
            of one stream permorm consequently */
         cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
-        sendBlockToServer();
+        cu_moveBorderDataToField(cu_gpuProp);
         cu_deviceSynchronize(); // whait while 'streamInternal' and 'streamHaloBorder' finish their work
+        sendBlockToServer();
         Log << "Device successfully synchronized.";
         m_time += TAU;
     }

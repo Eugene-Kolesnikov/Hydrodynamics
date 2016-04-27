@@ -44,3 +44,12 @@ __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int 
         }
     }
 }
+
+__global__ void cu_computeBorders(Cell* borders, Cell* field, int Ny, int fieldSize)
+{
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+    if(tid >= 2*Ny)
+        return;
+    borders[tid] = field[(Ny + 2) + 1 + tid];
+    borders[Ny + tid] = field[fieldSize - 2 * (Ny + 2) + 1 + tid];
+}

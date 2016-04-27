@@ -31,11 +31,15 @@ public:
     Cell* m_Field;
     int m_Field_size;
     int m_bNy;
+
+    Cell* m_borders;
+    int m_borders_size;
 public:
     cudaStream_t streamInternal;
     cudaStream_t streamHaloBorder;
 };
 
 __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int rank, int totalRanks);
+__global__ void cu_computeBorders(Cell* borders, Cell* field, int Ny, int fieldSize);
 
 #endif

@@ -14,7 +14,9 @@ extern "C" void cu_allocateFieldMemory(void* prop, int size);
 extern "C" void cu_loadFieldData(void* prop, Cell* host, int size, int type);
 extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type);
 extern "C" void cu_loadBorderData(void* prop, Cell* host, int size, int type);
+extern "C" void cu_moveBorderDataToField(void* prop);
 extern "C" void cu_updateBorders(void* prop);
+extern "C" void cu_computeBorderElements(void* prop);
 
 class ProcessNode : public Node
 {
