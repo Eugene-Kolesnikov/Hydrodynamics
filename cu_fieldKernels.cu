@@ -1,6 +1,7 @@
 #include <cuda.h>
 #include "cu_gpuProperties.h"
 #include "cell.h"
+#include "cu_cell.hpp"
 
 __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int rank, int totalRanks)
 {
@@ -45,11 +46,131 @@ __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int 
     }
 }
 
-__global__ void cu_computeBorders(Cell* borders, Cell* field, int Ny, int fieldSize)
+__device__ cu_Cell cu_get_f(Cell* elem)
 {
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if(tid >= 2*Ny)
-        return;
-    borders[tid] = field[(Ny + 2) + 1 + tid];
-    borders[Ny + tid] = field[fieldSize - 2 * (Ny + 2) + 1 + tid];
+    Cell f = *elem;
+    f.u *= elem->u;
+    f.v *= elem->v;
+    f.e += (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    return cu_Cell(f);
+}
+
+__device__ cu_Cell cu_get_F(Cell* elem)
+{
+    Cell F;
+    F.r = elem->r * elem->u;
+    F.u = (GAMMA - 1) * elem->r * elem->e + elem->r * pow(elem->u,2);
+    F.v = elem->r * elem->u * elem->v;
+    F.e = GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    return cu_Cell(F);
+}
+
+__device__ cu_Cell cu_get_G(Cell* elem)
+{
+    Cell G;
+    G.r = elem->r * elem->v;
+    G.u = elem->r * elem->u * elem->v;
+    G.v = (GAMMA - 1) * elem->r * elem->e + elem->r * pow(elem->v,2);
+    G.e = GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    return cu_Cell(G);
+}
+
+__device__ Cell cu_get_elem(cu_Cell* f)
+{
+    Cell elem;
+    elem.r = f->cell.r;
+    elem.u = f->cell.u / f->cell.r;
+    elem.v = f->cell.v / f->cell.r;
+    elem.e = f->cell.e - (pow(f->cell.u,2)+pow(f->cell.v,2))/2;
+    return elem;
+}
+
+#ifdef _DEBUG_
+__device__ Cell cu_get_elem_debug(cu_Cell* f)
+{
+    Cell elem;
+    elem.r = f->cell.r;
+    elem.u = f->cell.u;
+    elem.v = f->cell.v;
+    elem.e = f->cell.e;
+    return elem;
+}
+#endif
+
+__global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int type)
+{
+    Cell* elem_ij; // elem{i,j}
+    Cell* elem_ip1j; // elem{i+1,j}
+    Cell* elem_im1j; // elem{i-1,j}
+    Cell* elem_ijp1; // elem{i,j+1}
+    Cell* elem_ijm1; // elem{i,j-1}
+    Cell* cell;
+
+    if(type == _BORDERS_) {
+        int tid = blockIdx.x * blockDim.x + threadIdx.x;
+        if(tid >= Ny)
+            return;
+        if(threadIdx.y == 0) {
+            elem_ij   = &field[1*(Ny + 2) + 1 + tid]; // elem{i,j}
+            elem_ip1j = &field[2*(Ny + 2) + 1 + tid]; // elem{i+1,j}
+            elem_im1j = &field[0*(Ny + 2) + 1 + tid]; // elem{i-1,j}
+            elem_ijp1 = &field[1*(Ny + 2) + 1 + tid+1]; // elem{i,j+1}
+            elem_ijm1 = &field[1*(Ny + 2) + 1 + tid-1]; // elem{i,j-1}
+            cell = &borders[tid];
+        } else {
+            elem_ij   = &field[fieldSize - 2 * (Ny + 2) + 1 + tid]; // elem{i,j}
+            elem_ip1j = &field[fieldSize - 1 * (Ny + 2) + 1 + tid]; // elem{i+1,j}
+            elem_im1j = &field[fieldSize - 3 * (Ny + 2) + 1 + tid]; // elem{i-1,j}
+            elem_ijp1 = &field[fieldSize - 2 * (Ny + 2) + 1 + tid+1]; // elem{i,j+1}
+            elem_ijm1 = &field[fieldSize - 2 * (Ny + 2) + 1 + tid-1]; // elem{i,j-1}
+            cell = &borders[Ny + tid];
+        }
+    } else {
+        int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+        int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
+        if(tid_x >= Nx || tid_y >= Ny)
+            return;
+        elem_ij   = &field[tid_x*(Ny + 2) + 1 + tid_y]; // elem{i,j}
+        elem_ip1j = &field[(tid_x+1)*(Ny + 2) + 1 + tid_y]; // elem{i+1,j}
+        elem_im1j = &field[(tid_x-1)*(Ny + 2) + 1 + tid_y]; // elem{i-1,j}
+        elem_ijp1 = &field[tid_x*(Ny + 2) + 1 + tid_y+1]; // elem{i,j+1}
+        elem_ijm1 = &field[tid_x*(Ny + 2) + 1 + tid_y-1]; // elem{i,j-1}
+        cell = &field[tid_x*(Ny + 2) + 1 + tid_y];
+    }
+
+    cu_Cell f_ij   = cu_get_f(elem_ij); // f{i,j}
+    cu_Cell f_ip1j = cu_get_f(elem_ip1j); // f{i+1,j}
+    cu_Cell f_ijp1 = cu_get_f(elem_ijp1); // f{i,j+1}
+    cu_Cell f_im1j = cu_get_f(elem_im1j); // f{i-1,j}
+    cu_Cell f_ijm1 = cu_get_f(elem_ijm1); // f{i,j-1}
+
+    cu_Cell F_ij   = cu_get_F(elem_ij); // F{i,j}
+    cu_Cell F_ip1j = cu_get_F(elem_ip1j); // F{i+1,j}
+    cu_Cell F_im1j = cu_get_F(elem_im1j); // F{i-1,j}
+
+    cu_Cell G_ij   = cu_get_G(elem_ij); // G{i,j}
+    cu_Cell G_ijp1 = cu_get_G(elem_ijp1); // G{i,j+1}
+    cu_Cell G_ijm1 = cu_get_G(elem_ijm1); // G{i,j-1}
+
+    float D_ip1j = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
+                       fabs(elem_ip1j->u) + sqrt(10/9 * elem_ip1j->e)); // D{i+1,j}
+    float D_im1j = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
+                       fabs(elem_im1j->u) + sqrt(10/9 * elem_im1j->e)); // D{i-1,j}
+    float D_ijp1 = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
+                       fabs(elem_ijp1->u) + sqrt(10/9 * elem_ijp1->e)); // D{i,j+1}
+    float D_ijm1 = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
+                       fabs(elem_ijm1->u) + sqrt(10/9 * elem_ijm1->e)); // D{i,j-1}
+
+    cu_Cell F_ip12j = (F_ip1j + F_ij - (f_ip1j - f_ij) * D_ip1j) * 0.5f; // F{i+1/2,j}
+    cu_Cell F_im12j = (F_ij + F_im1j - (f_ij - f_im1j) * D_im1j) * 0.5f; // F{i-1/2,j}
+    cu_Cell G_ijp12 = (G_ijp1 + G_ij - (f_ijp1 - f_ij) * D_ijp1) * 0.5f; // G{i,j+1/2}
+    cu_Cell G_ijm12 = (G_ij + G_ijm1 - (f_ij - f_ijm1) * D_ijm1) * 0.5f; // G{i,j-1/2}
+
+    cu_Cell f_new = (f_ij + ( F_ip12j - F_im12j ) * Nx + ( G_ijp12 - G_ijm12 ) * Ny) * TAU;
+
+    __syncthreads();
+
+    //*cell = cu_get_elem(&f_new);
+    //*cell = cu_get_elem_debug(&f_ij);
+    *cell = *elem_ij;
 }

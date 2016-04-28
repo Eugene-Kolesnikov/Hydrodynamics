@@ -5,11 +5,6 @@
 #include "cell.h"
 extern MPI_Datatype MPI_CellType;
 
-// how long program will work
-#define TOTAL_TIME 1.0e-3
-// time step
-#define TAU 1.0e-3
-
 class Node
 {
 public:

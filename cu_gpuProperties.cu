@@ -56,12 +56,31 @@ extern "C" void cu_computeBorderElements(void* prop)
     logging::FileLogger* Log = gpu->Log;
     Cell* borders = gpu->m_borders;
     Cell* field = gpu->m_Field;
-    int Ny = gpu->m_bNy - 2;
+    int Nx = gpu->m_Field_size / gpu->m_bNy - 2; // number of horizontal elements
+    int Ny = gpu->m_bNy - 2; // number of vertical elements
     int verticalBlocks = floor((2*Ny - 1) / 256.0) + 1;
     int verticalThreads = 256.0;
-    cu_computeBorders <<< verticalBlocks,
-                          verticalThreads,
-                          0, gpu->streamHaloBorder >>> (borders, field, Ny, gpu->m_Field_size);
+    cu_computeElements <<< verticalBlocks,
+                           dim3(verticalThreads,2,1),
+                           0, gpu->streamHaloBorder >>> (borders, field, Nx, Ny, gpu->m_Field_size, _BORDERS_);
     cudaStreamSynchronize(gpu->streamHaloBorder);
-    *Log << "Successfully updated border elements.";
+    *Log << "Successfully computed border elements.";
+}
+
+extern "C" void cu_computeInternalElements(void* prop)
+{
+    cu_gpuProperties* gpu = (cu_gpuProperties*) prop;
+    logging::FileLogger* Log = gpu->Log;
+    Cell* field = gpu->m_Field;
+    int Nx = gpu->m_Field_size / gpu->m_bNy - 2; // number of horizontal elements
+    int Ny = gpu->m_bNy - 2; // number of vertical elements
+    int horizontalBlocks = floor((Nx - 1) / 256.0) + 1;
+    int horizontalThreads = 256.0;
+    int verticalBlocks = floor((Ny - 1) / 256.0) + 1;
+    int verticalThreads = 256.0;
+    cu_computeElements <<< dim3(horizontalBlocks,verticalBlocks,1),
+                           dim3(horizontalThreads,verticalThreads,1),
+                           0, gpu->streamInternal >>> (NULL, field, Nx, Ny, gpu->m_Field_size, _INTERNAL_);
+    cudaStreamSynchronize(gpu->streamInternal);
+    *Log << "Successfully computed border elements.";
 }

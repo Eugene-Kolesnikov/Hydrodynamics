@@ -41,15 +41,14 @@ void ProcessNode::runNode()
         cu_updateBorders(cu_gpuProp);
         #ifdef _DEBUG_
             cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
-            writeFieldPart(m_Field, m_columns, m_bNy, Log, "Part of x-velocity field with updated borders");
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, "Part of x-velocity field with updated borders");
         #endif
-        // TODO: compute CUDA kernel for borders
         cu_computeBorderElements(cu_gpuProp);
         cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
         #ifdef _DEBUG_
-            writeFieldPart(m_borderElements, 2, m_Ny, Log, "Received border elements from GPU");
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'r', Log, "Received border elements from GPU");
         #endif
-        // TODO: compute CUDA kernel for internal points while 'exchangeBorderPoints' executes
+        //cu_computeInternalElements(cu_gpuProp);
         exchangeBorderPoints();
         cu_loadHaloData(cu_gpuProp, m_haloElements, m_Ny, cu_loadFromHostToDevice);
         /* `cu_loadFieldData` is performed with stream 'streamInternal' which doesn't require
@@ -129,7 +128,7 @@ void ProcessNode::exchangeBorderPoints()
     Log << "Data successfully sent and recieved.";
     Log << "The process of exchanging halo points finished without errors.";
     #ifdef _DEBUG_
-        writeFieldPart(m_haloElements, 2, m_Ny, Log, "Received halo elements from neighbor nodes");
+        writeFieldPart_id(m_haloElements, 2, m_Ny, 'r', Log, "Received halo elements from neighbor nodes");
     #endif
 }
 

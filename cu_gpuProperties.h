@@ -5,6 +5,9 @@
 #include "LogSystem/FileLogger.hpp"
 #include "cell.h"
 
+#define _INTERNAL_ 0
+#define _BORDERS_ 1
+
 #define HANDLE_CUERROR(call) {										             \
     cudaError err = call;												         \
     if(err != cudaSuccess) {											         \
@@ -40,6 +43,6 @@ public:
 };
 
 __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int rank, int totalRanks);
-__global__ void cu_computeBorders(Cell* borders, Cell* field, int Ny, int fieldSize);
+__global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int type);
 
 #endif

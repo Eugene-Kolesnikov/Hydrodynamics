@@ -23,6 +23,7 @@ void ServerNode::runNode()
 {
     shareInitField();
     #ifdef _DEBUG_
+        printf("123\n");
         writeFieldPart(m_Field, m_bNx, m_bNy, Log, "Original x-velocity field  without updated borders");
     #endif
     while(true) {
@@ -56,12 +57,12 @@ void ServerNode::initDenseField()
         for (int yIndex = 1; yIndex < m_bNy-1; ++yIndex)
         {
             id = covert2Dto1D(xIndex, yIndex);
-            #ifdef _DEBUG_
+            /*#ifdef _DEBUG_
             m_Field[id].r = 0;
             m_Field[id].u = debug_initNumber();
             m_Field[id].v = debug_initNumber();
             m_Field[id].e = 0;
-            #else
+            #else*/
             cellToCoord(xIndex, yIndex, &x, &y);
             if(y < d1 - del) {
                 m_Field[id].r = 1;
@@ -91,7 +92,7 @@ void ServerNode::initDenseField()
                 m_Field[id].v = v3;
                 m_Field[id].e = e3;
             }
-            #endif
+            //#endif
         }
     }
     Log << "Dense field initialized.";
