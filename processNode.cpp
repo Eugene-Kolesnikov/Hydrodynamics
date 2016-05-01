@@ -36,31 +36,54 @@ void ProcessNode::runNode()
     int intNumPoints = m_columns * m_bNy;
     initBlock();
     cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromHostToDevice);
+    int k = 1;
     while(m_time < TOTAL_TIME) {
+        std::string time = std::to_string(m_time);
         Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
         cu_updateBorders(cu_gpuProp);
         #ifdef _DEBUG_
             cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
-            writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, "Part of x-velocity field with updated borders");
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, (time + "(after updating borders): Part of dense field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'u', Log, (time + "(after updating borders): Part of x-velocity field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'v', Log, (time + "(after updating borders): Part of y-velocity field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'e', Log, (time + "(after updating borders): Part of energy field with updated borders").c_str());
         #endif
         cu_computeBorderElements(cu_gpuProp);
         cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
         #ifdef _DEBUG_
-            writeFieldPart_id(m_borderElements, 2, m_Ny, 'r', Log, "Received border elements from GPU");
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'r', Log, (time + ": Received border element's density from GPU").c_str());
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'u', Log, (time + ": Received border element's from GPU").c_str());
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'v', Log, (time + ": Received border element's from GPU").c_str());
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'e', Log, (time + ": Received border element's from GPU").c_str());
         #endif
-        //cu_computeInternalElements(cu_gpuProp);
+        cu_computeInternalElements(cu_gpuProp);
+        #ifdef _DEBUG_
+            cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, (time + "(after computing internal elements): Part of dense field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'u', Log, (time + "(after updating internal elements): Part of x-velocity field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'v', Log, (time + "(after updating internal elements): Part of y-velocity field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'e', Log, (time + "(after updating internal elements): Part of energy field with updated borders").c_str());
+        #endif
         exchangeBorderPoints();
         cu_loadHaloData(cu_gpuProp, m_haloElements, m_Ny, cu_loadFromHostToDevice);
         /* `cu_loadFieldData` is performed with stream 'streamInternal' which doesn't require
            the stream 'streamHaloBorder' to be synchronized to start loading data. It requires only
            the computeBordersKernel to be finished which fulfills automatically because consequtive tasks
            of one stream permorm consequently */
-        cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
         cu_moveBorderDataToField(cu_gpuProp);
+        cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
+        #ifdef _DEBUG_
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, (time + "(after moving border elements): Part of dense field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'u', Log, (time + "(after moving border elements): Part of x-velocity field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'v', Log, (time + "(after moving border elements): Part of y-velocity field with updated borders").c_str());
+            writeFieldPart_id(m_Field, m_columns, m_bNy, 'e', Log, (time + "(after moving border elements): Part of energy field with updated borders").c_str());
+        #endif
         cu_deviceSynchronize(); // whait while 'streamInternal' and 'streamHaloBorder' finish their work
-        sendBlockToServer();
+        if(k % 25 == 0)
+            sendBlockToServer();
         Log << "Device successfully synchronized.";
         m_time += TAU;
+        ++k;
     }
     setStopCheckMark();
     sendBlockToServer();

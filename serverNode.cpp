@@ -23,7 +23,6 @@ void ServerNode::runNode()
 {
     shareInitField();
     #ifdef _DEBUG_
-        printf("123\n");
         writeFieldPart(m_Field, m_bNx, m_bNy, Log, "Original x-velocity field  without updated borders");
     #endif
     while(true) {
@@ -33,6 +32,7 @@ void ServerNode::runNode()
             break;
         }
         plotDenseField();
+        printf("Plotted dense field number %d.\n", m_fileCount);
     }
     Log << "Correct exit";
 }
@@ -49,9 +49,9 @@ void ServerNode::initDenseField()
     // x := rho3, y := v3, z := e3
     // Correct: https://www.wolframalpha.com/input/?i=d*(x-5)+%3D+x*y,+d*x*y+%3D+(2%2F3*x*z%2Bx*y%5E2)+-+2%2F3,+d*(x*(z%2B1%2F2*y%5E2)-1)+%3D+x*y*(z%2B2%2F3*z%2B1%2F2*y%5E2),+d+%3D+2%2F3*sqrt(2)
     // Incorrect: https://www.wolframalpha.com/input/?i=x*(2%2F3*sqrt(2)-y)%3D10%2F3*sqrt(2),+x*y*(2%2F3*sqrt(2)-y)+%2B+2%2F3*x*z%3D2%2F3,+5%2F3*z%2B1%2F2*(2%2F3*sqrt(2)-y)%5E2%3D31%2F18
-    double r3 = 80.0 / 7.0;
-    double v3 = 3.0 / (4.0 * std::sqrt(2));
-    double e3 = 133.0 / 320.0;
+    double r3 = 80.0f / 7.0f;
+    double v3 = 3.0f / (4.0f * std::sqrt(2.0f));
+    double e3 = 133.0 / 320.0f;
     for (int xIndex = 1; xIndex < m_bNx-1; ++xIndex)
     {
         for (int yIndex = 1; yIndex < m_bNy-1; ++yIndex)
@@ -79,17 +79,17 @@ void ServerNode::initDenseField()
                     m_Field[id].r = 5;
                     m_Field[id].u = 0;
                     m_Field[id].v = 0;
-                    m_Field[id].e = 0.2;
+                    m_Field[id].e = 0.2f;
                 }
             } else if(y < d2) {
                 m_Field[id].r = 5;
                 m_Field[id].u = 0;
                 m_Field[id].v = 0;
-                m_Field[id].e = 0.2;
+                m_Field[id].e = 0.2f;
             } else {
                 m_Field[id].r = r3;
                 m_Field[id].u = 0;
-                m_Field[id].v = v3;
+                m_Field[id].v = -v3;
                 m_Field[id].e = e3;
             }
             //#endif
@@ -206,7 +206,7 @@ void ServerNode::loadGui(std::string gui_dl)
 
 std::string ServerNode::getFilename()
 {
-    std::string filename("img/denseField");
+    std::string filename("img/densityField");
     if(m_fileCount < 10) {
         filename += "000";
     } else if(m_fileCount < 100) {

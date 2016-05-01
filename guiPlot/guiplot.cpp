@@ -28,14 +28,19 @@ int plotField(int argc, char** argv, void* arr, int Nx, int Ny, const char* file
         for (int yIndex = 1; yIndex < bNy - 1; ++yIndex)
             colorMap->data()->setCell(xIndex-1, yIndex-1, array[xIndex * bNy + yIndex].r);
 
-    //colorMap->data()->setCell(0, 0, 10); //hack!
+    // for density field
+    colorMap->data()->setCell(0, 0, 25); //hack!
+
+    // for x-velocity field
+    //colorMap->data()->setCell(0, 0, -0.5); //hack!
+    //colorMap->data()->setCell(Nx-1, Ny-1, 0.5); //hack!
 
     // add a color scale:
     QCPColorScale *colorScale = new QCPColorScale(customPlot);
     customPlot->plotLayout()->addElement(0, 1, colorScale); // add it to the right of the main axis rect
     colorScale->setType(QCPAxis::atRight); // scale shall be vertical bar with tick/axis labels right (actually atRight is already the default)
     colorMap->setColorScale(colorScale); // associate the color map with the color scale
-    colorScale->axis()->setLabel("Dense Field");
+    colorScale->axis()->setLabel("Density Field");
 
     // set the color gradient of the color map to one of the presets:
     colorMap->setGradient(QCPColorGradient::gpJet); // gpJet, gpThermal
@@ -52,7 +57,7 @@ int plotField(int argc, char** argv, void* arr, int Nx, int Ny, const char* file
 
     // rescale the key (x) and value (y) axes so the whole color map is visible:
     customPlot->rescaleAxes();
-    customPlot->savePng(filename,640,480);
+    customPlot->savePng(filename,1280,1024);
 
     delete customPlot;
     return 0;

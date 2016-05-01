@@ -38,7 +38,8 @@ __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int 
             halo1_tmp.r = border1->r; halo1_tmp.u = -border1->u;
             halo1_tmp.v = border1->v; halo1_tmp.e = border1->e;
             *halo1 = halo1_tmp;
-        } else if(rank == totalRanks - 2) {
+        }
+        if(rank == totalRanks - 2) {
             halo2_tmp.r = border2->r; halo2_tmp.u = -border2->u;
             halo2_tmp.v = border2->v; halo2_tmp.e = border2->e;
             *halo2 = halo2_tmp;
@@ -48,10 +49,11 @@ __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int 
 
 __device__ cu_Cell cu_get_f(Cell* elem)
 {
-    Cell f = *elem;
-    f.u *= elem->u;
-    f.v *= elem->v;
-    f.e += (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    Cell f;
+    f.r = elem->r;
+    f.u = elem->r * elem->u;
+    f.v = elem->r * elem->v;
+    f.e = elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f;
     return cu_Cell(f);
 }
 
@@ -79,9 +81,9 @@ __device__ Cell cu_get_elem(cu_Cell* f)
 {
     Cell elem;
     elem.r = f->cell.r;
-    elem.u = f->cell.u / f->cell.r;
-    elem.v = f->cell.v / f->cell.r;
-    elem.e = f->cell.e - (pow(f->cell.u,2)+pow(f->cell.v,2))/2;
+    elem.u = f->cell.u / elem.r;
+    elem.v = f->cell.v / elem.r;
+    elem.e = f->cell.e - (pow(elem.u,2)+pow(elem.v,2))/2.0f;
     return elem;
 }
 
@@ -125,17 +127,17 @@ __global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, i
             elem_ijm1 = &field[fieldSize - 2 * (Ny + 2) + 1 + tid-1]; // elem{i,j-1}
             cell = &borders[Ny + tid];
         }
-    } else {
-        int tid_x = blockIdx.x * blockDim.x + threadIdx.x;
+    } else if(type == _INTERNAL_) {
+        int tid_x = blockIdx.x * blockDim.x + threadIdx.x + 1;
         int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
-        if(tid_x >= Nx || tid_y >= Ny)
+        if(tid_x > Nx || tid_y > Ny)
             return;
         elem_ij   = &field[tid_x*(Ny + 2) + 1 + tid_y]; // elem{i,j}
         elem_ip1j = &field[(tid_x+1)*(Ny + 2) + 1 + tid_y]; // elem{i+1,j}
         elem_im1j = &field[(tid_x-1)*(Ny + 2) + 1 + tid_y]; // elem{i-1,j}
         elem_ijp1 = &field[tid_x*(Ny + 2) + 1 + tid_y+1]; // elem{i,j+1}
         elem_ijm1 = &field[tid_x*(Ny + 2) + 1 + tid_y-1]; // elem{i,j-1}
-        cell = &field[tid_x*(Ny + 2) + 1 + tid_y];
+        cell = elem_ij;
     }
 
     cu_Cell f_ij   = cu_get_f(elem_ij); // f{i,j}
@@ -156,21 +158,21 @@ __global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, i
                        fabs(elem_ip1j->u) + sqrt(10/9 * elem_ip1j->e)); // D{i+1,j}
     float D_im1j = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
                        fabs(elem_im1j->u) + sqrt(10/9 * elem_im1j->e)); // D{i-1,j}
-    float D_ijp1 = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
-                       fabs(elem_ijp1->u) + sqrt(10/9 * elem_ijp1->e)); // D{i,j+1}
-    float D_ijm1 = max(fabs(elem_ij->u) + sqrt(10/9 * elem_ij->e),
-                       fabs(elem_ijm1->u) + sqrt(10/9 * elem_ijm1->e)); // D{i,j-1}
+    float D_ijp1 = max(fabs(elem_ij->v) + sqrt(10/9 * elem_ij->e),
+                       fabs(elem_ijp1->v) + sqrt(10/9 * elem_ijp1->e)); // D{i,j+1}
+    float D_ijm1 = max(fabs(elem_ij->v) + sqrt(10/9 * elem_ij->e),
+                       fabs(elem_ijm1->v) + sqrt(10/9 * elem_ijm1->e)); // D{i,j-1}
 
     cu_Cell F_ip12j = (F_ip1j + F_ij - (f_ip1j - f_ij) * D_ip1j) * 0.5f; // F{i+1/2,j}
     cu_Cell F_im12j = (F_ij + F_im1j - (f_ij - f_im1j) * D_im1j) * 0.5f; // F{i-1/2,j}
     cu_Cell G_ijp12 = (G_ijp1 + G_ij - (f_ijp1 - f_ij) * D_ijp1) * 0.5f; // G{i,j+1/2}
     cu_Cell G_ijm12 = (G_ij + G_ijm1 - (f_ij - f_ijm1) * D_ijm1) * 0.5f; // G{i,j-1/2}
 
-    cu_Cell f_new = (f_ij + ( F_ip12j - F_im12j ) * Nx + ( G_ijp12 - G_ijm12 ) * Ny) * TAU;
+    cu_Cell f_new = f_ij - (( F_ip12j - F_im12j ) * Nx + ( G_ijp12 - G_ijm12 ) * Ny) * TAU;
 
     __syncthreads();
 
-    //*cell = cu_get_elem(&f_new);
-    //*cell = cu_get_elem_debug(&f_ij);
-    *cell = *elem_ij;
+    *cell = cu_get_elem(&f_new);
+    //*cell = cu_get_elem_debug(&f_new);
+    //*cell = *elem_ij;
 }
