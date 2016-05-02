@@ -103,7 +103,7 @@ extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type)
     if(type == cu_loadFromDeviceToHost) {
         HANDLE_CUERROR( cudaMemcpyAsync( host, gpu->m_Field + 1,
             size * sizeof(Cell), cudaMemcpyDeviceToHost, gpu->streamHaloBorder ) );
-        HANDLE_CUERROR( cudaMemcpyAsync( host + size, gpu->m_Field + gpu->m_Field_size - size - 1,
+        HANDLE_CUERROR( cudaMemcpyAsync( host + size, gpu->m_Field + gpu->m_Field_size - 1*(size + 2) + 1,
             size * sizeof(Cell), cudaMemcpyDeviceToHost, gpu->streamHaloBorder ) );
         cudaStreamSynchronize(gpu->streamHaloBorder);
         *Log << (std::string("Stream 'streamHaloBorder' transfered two arrays of ") +
@@ -111,7 +111,7 @@ extern "C" void cu_loadHaloData(void* prop, Cell* host, int size, int type)
     } else if(type == cu_loadFromHostToDevice) {
         HANDLE_CUERROR( cudaMemcpyAsync( gpu->m_Field + 1, host,
             size * sizeof(Cell), cudaMemcpyHostToDevice, gpu->streamHaloBorder ) );
-        HANDLE_CUERROR( cudaMemcpyAsync( gpu->m_Field + gpu->m_Field_size - size - 1, host + size,
+        HANDLE_CUERROR( cudaMemcpyAsync( gpu->m_Field + gpu->m_Field_size - 1*(size + 2) + 1, host + size,
             size * sizeof(Cell), cudaMemcpyHostToDevice, gpu->streamHaloBorder ) );
         cudaStreamSynchronize(gpu->streamHaloBorder);
         *Log << (std::string("Stream 'streamHaloBorder' transfered two arrays of ") +

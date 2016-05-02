@@ -2,6 +2,8 @@
 #include <mpi.h>
 #include "debug.h"
 
+#define STEP_LENGTH 50
+
 ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int Ny):
     Node::Node(rank, size, Nx, Ny),
     Log(rank, createLogFilename(rank))
@@ -71,7 +73,7 @@ void ProcessNode::runNode()
            the computeBordersKernel to be finished which fulfills automatically because consequtive tasks
            of one stream permorm consequently */
         cu_moveBorderDataToField(cu_gpuProp);
-        if(k % 10 == 0) {
+        if(k % STEP_LENGTH == 0) {
             cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
             #ifdef _DEBUG_
                 writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, (time + "(after moving border elements): Part of dense field with updated borders").c_str());

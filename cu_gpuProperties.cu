@@ -76,15 +76,16 @@ extern "C" void cu_computeInternalElements(void* prop)
     Cell* field = gpu->m_Field;
     int Nx = gpu->m_Field_size / gpu->m_bNy - 2; // number of horizontal elements
     int Ny = gpu->m_bNy - 2; // number of vertical elements
-    int numX = Nx - 2; // number of horizontal elements without borders
-    int numY = Ny; // number of vertical elements without borders
+    int numX = Nx - 2; // number of horizontal elements without halo points and borders
+    int numY = Ny; // number of vertical elements without halo points
     int horizontalThreads = 32;
-    int horizontalBlocks = floor((numX - 1.0) / horizontalThreads) + 1;
+    int horizontalBlocks = floor((numX - 1.0) / (horizontalThreads - 2)) + 1;
     int verticalThreads = 32;
-    int verticalBlocks = floor((numY - 1.0) / verticalThreads) + 1;
+    int verticalBlocks = floor((numY - 1.0) / (verticalThreads - 2)) + 1;
     cu_computeElements <<< dim3(horizontalBlocks,verticalBlocks,1),
                            dim3(horizontalThreads,verticalThreads,1),
-                           0, gpu->streamInternal >>> (borders, field, Nx, Ny, gpu->m_Field_size, _INTERNAL_);
+                           verticalThreads * horizontalThreads * sizeof(Cell),
+                           gpu->streamInternal >>> (borders, field, Nx, Ny, gpu->m_Field_size, _INTERNAL_);
     cudaStreamSynchronize(gpu->streamInternal);
     *Log << "Successfully computed iternal elements and synchronized correctly.";
 }
