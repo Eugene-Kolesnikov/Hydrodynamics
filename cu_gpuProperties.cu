@@ -58,11 +58,12 @@ extern "C" void cu_computeBorderElements(void* prop)
     Cell* field = gpu->m_Field;
     int Nx = gpu->m_Field_size / gpu->m_bNy - 2; // number of horizontal elements
     int Ny = gpu->m_bNy - 2; // number of vertical elements
-    int verticalBlocks = floor((2*Ny - 1) / 32.0) + 1;
     int verticalThreads = 32;
+    int verticalBlocks = floor((Ny - 1.0) / (verticalThreads - 2)) + 1;
     cu_computeElements <<< verticalBlocks,
-                           dim3(verticalThreads,2,1),
-                           0, gpu->streamHaloBorder >>> (borders, field, Nx, Ny, gpu->m_Field_size, _BORDERS_);
+                           dim3(verticalThreads,6,1),
+                           verticalThreads * 6 * sizeof(Cell),
+                           gpu->streamHaloBorder >>> (borders, field, Nx, Ny, gpu->m_Field_size, _BORDERS_);
     cudaStreamSynchronize(gpu->streamHaloBorder);
     *Log << "Successfully computed border elements and synchronized correctly.";
 }
@@ -77,10 +78,10 @@ extern "C" void cu_computeInternalElements(void* prop)
     int Ny = gpu->m_bNy - 2; // number of vertical elements
     int numX = Nx - 2; // number of horizontal elements without borders
     int numY = Ny; // number of vertical elements without borders
-    int horizontalBlocks = floor((numX - 1) / 32.0) + 1;
-    int horizontalThreads = 32.0;
-    int verticalBlocks = floor((numY - 1) / 32.0) + 1;
-    int verticalThreads = 32.0;
+    int horizontalThreads = 32;
+    int horizontalBlocks = floor((numX - 1.0) / horizontalThreads) + 1;
+    int verticalThreads = 32;
+    int verticalBlocks = floor((numY - 1.0) / verticalThreads) + 1;
     cu_computeElements <<< dim3(horizontalBlocks,verticalBlocks,1),
                            dim3(horizontalThreads,verticalThreads,1),
                            0, gpu->streamInternal >>> (borders, field, Nx, Ny, gpu->m_Field_size, _INTERNAL_);

@@ -36,7 +36,7 @@ void ProcessNode::runNode()
     int intNumPoints = m_columns * m_bNy;
     initBlock();
     cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromHostToDevice);
-    int k = 1;
+    int k = 0;
     while(m_time < TOTAL_TIME) {
         std::string time = std::to_string(m_time);
         Log << (std::string("Start calculations at time: ") + std::to_string(m_time)).c_str();
@@ -71,16 +71,18 @@ void ProcessNode::runNode()
            the computeBordersKernel to be finished which fulfills automatically because consequtive tasks
            of one stream permorm consequently */
         cu_moveBorderDataToField(cu_gpuProp);
-        cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
-        #ifdef _DEBUG_
-            writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, (time + "(after moving border elements): Part of dense field with updated borders").c_str());
-            writeFieldPart_id(m_Field, m_columns, m_bNy, 'u', Log, (time + "(after moving border elements): Part of x-velocity field with updated borders").c_str());
-            writeFieldPart_id(m_Field, m_columns, m_bNy, 'v', Log, (time + "(after moving border elements): Part of y-velocity field with updated borders").c_str());
-            writeFieldPart_id(m_Field, m_columns, m_bNy, 'e', Log, (time + "(after moving border elements): Part of energy field with updated borders").c_str());
-        #endif
-        cu_deviceSynchronize(); // whait while 'streamInternal' and 'streamHaloBorder' finish their work
-        if(k % 25 == 0)
+        if(k % 10 == 0) {
+            cu_loadFieldData(cu_gpuProp, m_Field, intNumPoints, cu_loadFromDeviceToHost);
+            #ifdef _DEBUG_
+                writeFieldPart_id(m_Field, m_columns, m_bNy, 'r', Log, (time + "(after moving border elements): Part of dense field with updated borders").c_str());
+                writeFieldPart_id(m_Field, m_columns, m_bNy, 'u', Log, (time + "(after moving border elements): Part of x-velocity field with updated borders").c_str());
+                writeFieldPart_id(m_Field, m_columns, m_bNy, 'v', Log, (time + "(after moving border elements): Part of y-velocity field with updated borders").c_str());
+                writeFieldPart_id(m_Field, m_columns, m_bNy, 'e', Log, (time + "(after moving border elements): Part of energy field with updated borders").c_str());
+            #endif
+            cu_deviceSynchronize(); // whait while 'streamInternal' and 'streamHaloBorder' finish their work
             sendBlockToServer();
+        } else
+            cu_deviceSynchronize(); // whait while 'streamInternal' and 'streamHaloBorder' finish their work
         Log << "Device successfully synchronized.";
         m_time += TAU;
         ++k;

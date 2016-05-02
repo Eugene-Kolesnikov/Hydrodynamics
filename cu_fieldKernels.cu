@@ -3,6 +3,8 @@
 #include "cell.h"
 #include "cu_cell.hpp"
 
+#include <stdio.h>
+
 __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int rank, int totalRanks)
 {
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -99,8 +101,22 @@ __device__ Cell cu_get_elem_debug(cu_Cell* f)
 }
 #endif
 
+__device__ void loadSharedMemory(Cell* field, int Ny, int fieldSize)
+{
+    extern __shared__ Cell cellMemory[];
+
+    int tid = blockIdx.x * (blockDim.x - 2) + threadIdx.x;
+
+    Cell* fieldPart = (threadIdx.y < 3) ? field : &field[fieldSize - 3 * (Ny + 2)];
+    int column = (threadIdx.y < 3) ? threadIdx.y : threadIdx.y - 3;
+    cellMemory[threadIdx.y * blockDim.x + threadIdx.x] = fieldPart[column * (Ny + 2) + tid];
+    __syncthreads();
+}
+
 __global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int type)
 {
+    extern __shared__ Cell cellMemory[];
+
     Cell* elem_ij; // elem{i,j}
     Cell* elem_ip1j; // elem{i+1,j}
     Cell* elem_im1j; // elem{i-1,j}
@@ -109,24 +125,29 @@ __global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, i
     Cell* cell;
 
     if(type == _BORDERS_) {
-        int tid = blockIdx.x * blockDim.x + threadIdx.x;
-        if(tid >= Ny)
+        int tid = blockIdx.x * (blockDim.x - 2) + threadIdx.x;
+
+        if(tid >= Ny+2) // eliminate unnecessary threads
             return;
-        if(threadIdx.y == 0) {
-            elem_ij   = &field[1*(Ny + 2) + 1 + tid]; // elem{i,j}
-            elem_ip1j = &field[2*(Ny + 2) + 1 + tid]; // elem{i+1,j}
-            elem_im1j = &field[0*(Ny + 2) + 1 + tid]; // elem{i-1,j}
-            elem_ijp1 = &field[1*(Ny + 2) + 1 + tid+1]; // elem{i,j+1}
-            elem_ijm1 = &field[1*(Ny + 2) + 1 + tid-1]; // elem{i,j-1}
-            cell = &borders[tid];
-        } else {
-            elem_ij   = &field[fieldSize - 2 * (Ny + 2) + 1 + tid]; // elem{i,j}
-            elem_ip1j = &field[fieldSize - 1 * (Ny + 2) + 1 + tid]; // elem{i+1,j}
-            elem_im1j = &field[fieldSize - 3 * (Ny + 2) + 1 + tid]; // elem{i-1,j}
-            elem_ijp1 = &field[fieldSize - 2 * (Ny + 2) + 1 + tid+1]; // elem{i,j+1}
-            elem_ijm1 = &field[fieldSize - 2 * (Ny + 2) + 1 + tid-1]; // elem{i,j-1}
-            cell = &borders[Ny + tid];
-        }
+
+        loadSharedMemory(field, Ny, fieldSize);
+
+        if(tid >= Ny) // eliminate unnecessary threads
+            return;
+
+        // eliminate unnecessary threads
+        if(threadIdx.x >= 30 || threadIdx.y > 1)
+            return;
+
+        // get the adresses of necessary cells
+        Cell* cellMemoryPart = (threadIdx.y == 0) ? &cellMemory[0*blockDim.x] : &cellMemory[3*blockDim.x];
+        cell = (threadIdx.y == 0) ? &borders[tid] : &borders[Ny + tid];
+        elem_ij   = &cellMemoryPart[1*blockDim.x + 1 + threadIdx.x]; // elem{i,j}
+        elem_ip1j = &cellMemoryPart[2*blockDim.x + 1 + threadIdx.x]; // elem{i+1,j}
+        elem_im1j = &cellMemoryPart[0*blockDim.x + 1 + threadIdx.x]; // elem{i-1,j}
+        elem_ijp1 = &cellMemoryPart[1*blockDim.x + 1 + threadIdx.x+1]; // elem{i,j+1}
+        elem_ijm1 = &cellMemoryPart[1*blockDim.x + 1 + threadIdx.x-1]; // elem{i,j-1}
+
     } else if(type == _INTERNAL_) {
         int tid_x = blockIdx.x * blockDim.x + threadIdx.x + 1;
         int tid_y = blockIdx.y * blockDim.y + threadIdx.y;
