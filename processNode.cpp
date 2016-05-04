@@ -54,9 +54,9 @@ void ProcessNode::runNode()
         cu_loadBorderData(cu_gpuProp, m_borderElements, m_Ny, cu_loadFromDeviceToHost);
         #ifdef _DEBUG_
             writeFieldPart_id(m_borderElements, 2, m_Ny, 'r', Log, (time + ": Received border element's density from GPU").c_str());
-            writeFieldPart_id(m_borderElements, 2, m_Ny, 'u', Log, (time + ": Received border element's from GPU").c_str());
-            writeFieldPart_id(m_borderElements, 2, m_Ny, 'v', Log, (time + ": Received border element's from GPU").c_str());
-            writeFieldPart_id(m_borderElements, 2, m_Ny, 'e', Log, (time + ": Received border element's from GPU").c_str());
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'u', Log, (time + ": Received border element's x-velocity from GPU").c_str());
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'v', Log, (time + ": Received border element's y-velocity from GPU").c_str());
+            writeFieldPart_id(m_borderElements, 2, m_Ny, 'e', Log, (time + ": Received border element's energy from GPU").c_str());
         #endif
         cu_computeInternalElements(cu_gpuProp);
         #ifdef _DEBUG_
