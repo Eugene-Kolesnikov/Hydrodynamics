@@ -43,6 +43,6 @@ public:
 };
 
 __global__ void updateBordersKernel(Cell* field, int Nx, int Ny, char type, int rank, int totalRanks);
-__global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int type);
+__global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int totalNx, int type);
 
 #endif

@@ -63,7 +63,7 @@ extern "C" void cu_computeBorderElements(void* prop)
     cu_computeElements <<< verticalBlocks,
                            dim3(verticalThreads,6,1),
                            verticalThreads * 6 * sizeof(Cell),
-                           gpu->streamHaloBorder >>> (borders, field, Nx, Ny, gpu->m_Field_size, _BORDERS_);
+                           gpu->streamHaloBorder >>> (borders, field, Nx , Ny, gpu->m_Field_size, Nx * (gpu->m_totalRanks-1), _BORDERS_);
     cudaStreamSynchronize(gpu->streamHaloBorder);
     *Log << "Successfully computed border elements and synchronized correctly.";
 }
@@ -85,7 +85,7 @@ extern "C" void cu_computeInternalElements(void* prop)
     cu_computeElements <<< dim3(horizontalBlocks,verticalBlocks,1),
                            dim3(horizontalThreads,verticalThreads,1),
                            verticalThreads * horizontalThreads * sizeof(Cell),
-                           gpu->streamInternal >>> (borders, field, Nx, Ny, gpu->m_Field_size, _INTERNAL_);
+                           gpu->streamInternal >>> (borders, field, Nx, Ny, gpu->m_Field_size, Nx * (gpu->m_totalRanks-1), _INTERNAL_);
     cudaStreamSynchronize(gpu->streamInternal);
     *Log << "Successfully computed iternal elements and synchronized correctly.";
 }

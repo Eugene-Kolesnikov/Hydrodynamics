@@ -65,7 +65,7 @@ __device__ cu_Cell cu_get_F(Cell* elem)
     F.r = elem->r * elem->u;
     F.u = (GAMMA - 1) * elem->r * elem->e + elem->r * pow(elem->u,2);
     F.v = elem->r * elem->u * elem->v;
-    F.e = GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    F.e = /*elem->r * elem->u * */(GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
     return cu_Cell(F);
 }
 
@@ -75,7 +75,7 @@ __device__ cu_Cell cu_get_G(Cell* elem)
     G.r = elem->r * elem->v;
     G.u = elem->r * elem->u * elem->v;
     G.v = (GAMMA - 1) * elem->r * elem->e + elem->r * pow(elem->v,2);
-    G.e = GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    G.e = /*elem->r * elem->v * */(GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
     return cu_Cell(G);
 }
 
@@ -121,7 +121,7 @@ __device__ void loadSharedMemory(Cell* field, int Ny, int fieldSize, int type)
     }
 }
 
-__global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int type)
+__global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, int fieldSize, int totalNx, int type)
 {
     extern __shared__ Cell cellMemory[];
 
@@ -200,7 +200,7 @@ __global__ void cu_computeElements(Cell* borders, Cell* field, int Nx, int Ny, i
     cu_Cell G_ijp12 = (G_ijp1 + G_ij - (f_ijp1 - f_ij) * D_ijp1) * 0.5f; // G{i,j+1/2}
     cu_Cell G_ijm12 = (G_ij + G_ijm1 - (f_ij - f_ijm1) * D_ijm1) * 0.5f; // G{i,j-1/2}
 
-    cu_Cell f_new = f_ij - (( F_ip12j - F_im12j ) * Nx + ( G_ijp12 - G_ijm12 ) * Ny) * TAU;
+    cu_Cell f_new = f_ij - (( F_ip12j - F_im12j ) * totalNx + ( G_ijp12 - G_ijm12 ) * Ny) * TAU;
 
     __syncthreads();
 
