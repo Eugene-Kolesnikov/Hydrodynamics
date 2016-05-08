@@ -26,7 +26,7 @@ private:
 private:
     void cellToCoord(int xIndex, int yIndex, double* x, double* y);
     int covert2Dto1D(int xIndex, int yIndex);
-    std::string getFilename();
+    std::string getFilename(char type);
     void parseCmdArgv_guiDL(int argc, char** argv);
 
 private:
@@ -34,7 +34,7 @@ private:
     char** m_argv;
     bool m_loadedGui;
     void* m_guiLibHandle;
-    int (*QplotField)(int argc, char** argv, void* Field, int Nx, int Ny, const char* filename);
+    int (*QplotField)(int argc, char** argv, void* Field, int Nx, int Ny, const char* filename, char type);
 
 private:
     Cell* m_Field;

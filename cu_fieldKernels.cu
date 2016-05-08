@@ -55,7 +55,7 @@ __device__ cu_Cell cu_get_f(Cell* elem)
     f.r = elem->r;
     f.u = elem->r * elem->u;
     f.v = elem->r * elem->v;
-    f.e = elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f;
+    f.e = elem->r * (elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
     return cu_Cell(f);
 }
 
@@ -65,7 +65,7 @@ __device__ cu_Cell cu_get_F(Cell* elem)
     F.r = elem->r * elem->u;
     F.u = (GAMMA - 1) * elem->r * elem->e + elem->r * pow(elem->u,2);
     F.v = elem->r * elem->u * elem->v;
-    F.e = /*elem->r * elem->u * */(GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
+    F.e = elem->r * elem->u * (GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
     return cu_Cell(F);
 }
 
@@ -75,7 +75,7 @@ __device__ cu_Cell cu_get_G(Cell* elem)
     G.r = elem->r * elem->v;
     G.u = elem->r * elem->u * elem->v;
     G.v = (GAMMA - 1) * elem->r * elem->e + elem->r * pow(elem->v,2);
-    G.e = /*elem->r * elem->v * */(GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
+    G.e = elem->r * elem->v * (GAMMA * elem->e + (pow(elem->u,2) + pow(elem->v,2))/2.0f);
     return cu_Cell(G);
 }
 
@@ -85,7 +85,7 @@ __device__ Cell cu_get_elem(cu_Cell* f)
     elem.r = f->cell.r;
     elem.u = f->cell.u / elem.r;
     elem.v = f->cell.v / elem.r;
-    elem.e = f->cell.e - (pow(elem.u,2)+pow(elem.v,2))/2.0f;
+    elem.e = f->cell.e / elem.r - (pow(elem.u,2)+pow(elem.v,2))/2.0f;
     return elem;
 }
 

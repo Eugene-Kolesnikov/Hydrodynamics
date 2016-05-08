@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include "debug.h"
 
-#define STEP_LENGTH 50
+#define STEP_LENGTH 100
 
 ProcessNode::ProcessNode(const int rank, const int size, const int Nx, const int Ny):
     Node::Node(rank, size, Nx, Ny),

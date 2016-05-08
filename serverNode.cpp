@@ -47,11 +47,10 @@ void ServerNode::initDenseField()
     m_Field = new Cell [m_bNx * m_bNy];
     // Gugonio conditions:
     // x := rho3, y := v3, z := e3
-    // Correct: https://www.wolframalpha.com/input/?i=d*(x-5)+%3D+x*y,+d*x*y+%3D+(2%2F3*x*z%2Bx*y%5E2)+-+2%2F3,+d*(x*(z%2B1%2F2*y%5E2)-1)+%3D+x*y*(z%2B2%2F3*z%2B1%2F2*y%5E2),+d+%3D+2%2F3*sqrt(2)
-    // Incorrect: https://www.wolframalpha.com/input/?i=x*(2%2F3*sqrt(2)-y)%3D10%2F3*sqrt(2),+x*y*(2%2F3*sqrt(2)-y)+%2B+2%2F3*x*z%3D2%2F3,+5%2F3*z%2B1%2F2*(2%2F3*sqrt(2)-y)%5E2%3D31%2F18
-    double r3 = 80.0f / 7.0f;
-    double v3 = 3.0f / (4.0f * std::sqrt(2.0f));
-    double e3 = 133.0 / 320.0f;
+    // solve {d=2*sqrt(5/3*2/3*0.2), x*(d-y)=5*d, x*(d*y-2/3*z-y^2)=x*2/3*0.2, x*(d*(z+y^2/2)-y*(5/3*z+y^2/2))=5*d*0.2}
+    double r3 = 20.0;
+    double v3 = 0.707107;
+    double e3 = 0.05;
     for (int xIndex = 1; xIndex < m_bNx-1; ++xIndex)
     {
         for (int yIndex = 1; yIndex < m_bNy-1; ++yIndex)
@@ -65,30 +64,30 @@ void ServerNode::initDenseField()
             #else*/
             cellToCoord(xIndex, yIndex, &x, &y);
             if(y < d1 - del) {
-                m_Field[id].r = 1;
-                m_Field[id].u = 0;
-                m_Field[id].v = 0;
-                m_Field[id].e = 1;
+                m_Field[id].r = 1.0;
+                m_Field[id].u = 0.0;
+                m_Field[id].v = 0.0;
+                m_Field[id].e = 1.0;
             } else if(y < d1) {
                 if(x < d1 || x > 2.0*d1) {
-                    m_Field[id].r = 1;
-                    m_Field[id].u = 0;
-                    m_Field[id].v = 0;
-                    m_Field[id].e = 1;
+                    m_Field[id].r = 1.0;
+                    m_Field[id].u = 0.0;
+                    m_Field[id].v = 0.0;
+                    m_Field[id].e = 1.0;
                 } else {
-                    m_Field[id].r = 5;
-                    m_Field[id].u = 0;
-                    m_Field[id].v = 0;
-                    m_Field[id].e = 0.2f;
+                    m_Field[id].r = 5.0;
+                    m_Field[id].u = 0.0;
+                    m_Field[id].v = 0.0;
+                    m_Field[id].e = 0.2;
                 }
             } else if(y < d2) {
-                m_Field[id].r = 5;
-                m_Field[id].u = 0;
-                m_Field[id].v = 0;
-                m_Field[id].e = 0.2f;
+                m_Field[id].r = 5.0;
+                m_Field[id].u = 0.0;
+                m_Field[id].v = 0.0;
+                m_Field[id].e = 0.2;
             } else {
                 m_Field[id].r = r3;
-                m_Field[id].u = 0;
+                m_Field[id].u = 0.0;
                 m_Field[id].v = -v3;
                 m_Field[id].e = e3;
             }
@@ -157,10 +156,16 @@ void ServerNode::loadUpdatedField()
 void ServerNode::plotDenseField()
 {
     if(m_loadedGui == true) {
-        std::string filename = getFilename();
-        QplotField(m_argc, m_argv, (void*)m_Field, m_Nx, m_Ny, filename.c_str());
+        std::string density = getFilename('r');
+        std::string xvel = getFilename('u');
+        std::string yvel = getFilename('v');
+        std::string energy = getFilename('e');
+        QplotField(m_argc, m_argv, (void*)m_Field, m_Nx, m_Ny, density.c_str(), 'r');
+        QplotField(m_argc, m_argv, (void*)m_Field, m_Nx, m_Ny, xvel.c_str(), 'u');
+        QplotField(m_argc, m_argv, (void*)m_Field, m_Nx, m_Ny, yvel.c_str(), 'v');
+        QplotField(m_argc, m_argv, (void*)m_Field, m_Nx, m_Ny, energy.c_str(), 'e');
         ++m_fileCount;
-        Log << (std::string("Saved image '") + filename + std::string("'")).c_str();
+        Log << std::string("Saved images.").c_str();
     }
 }
 
@@ -192,7 +197,7 @@ void ServerNode::loadGui(std::string gui_dl)
         noErrors = false;
     }
     QplotField = (int (*)(int argc, char** argv, void* Field, int Nx,
-        int Ny, const char* filename))dlsym(m_guiLibHandle, "plotField");
+        int Ny, const char* filename, char type))dlsym(m_guiLibHandle, "plotField");
     char *error;
     if (noErrors == true && (error = dlerror()) != NULL) {
         fputs(error, stderr);
@@ -204,9 +209,19 @@ void ServerNode::loadGui(std::string gui_dl)
     }
 }
 
-std::string ServerNode::getFilename()
+std::string ServerNode::getFilename(char type)
 {
-    std::string filename("img/densityField");
+    std::string filename;
+    switch (type) {
+        case 'r':
+            filename = "img/densityField"; break;
+        case 'u':
+            filename = "img/xVelField"; break;
+        case 'v':
+            filename = "img/yVelField"; break;
+        case 'e':
+            filename = "img/energyField"; break;
+    }
     if(m_fileCount < 10) {
         filename += "000";
     } else if(m_fileCount < 100) {

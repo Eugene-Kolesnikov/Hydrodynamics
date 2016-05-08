@@ -8,9 +8,9 @@
 
 #define GAMMA (5.0f/3.0f)
 // how long program will work
-#define TOTAL_TIME 1.0e-1 //+2
+#define TOTAL_TIME 5.0e+0//2.0e+0 //+2
 // time step
-#define TAU 1.0e-4
+#define TAU 1.0e-5
 
 struct Cell {
     double r; // density
