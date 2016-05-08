@@ -13,7 +13,7 @@ cd ./build/ &&
 touch execute.sh &&
 chmod 777 execute.sh &&
 echo "#!/usr/bin/env bash" >> ./execute.sh &&
-echo "mpiexec -l -np 5 ./hydrodynamics -gui libguiPlot.1.0.0.dylib -nx 100 -ny 100 && ffmpeg -framerate 15 -i img/densityField%04d.png -c:v libx264 -r 30 -pix_fmt yuv420p out.mp4" >> ./execute.sh &&
+echo "mpiexec -l -np 5 ./hydrodynamics -gui libguiPlot.1.0.0.dylib -nx 640 -ny 640 && ./createVideos.sh" >> ./execute.sh &&
 touch createVideos.sh &&
 chmod 777 createVideos.sh &&
 echo "#!/usr/bin/env bash" >> ./createVideos.sh &&
