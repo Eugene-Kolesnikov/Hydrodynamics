@@ -45,10 +45,22 @@ void ServerNode::initDenseField()
     double d2 = 2.0 / 3.0;
     double del = 0.1;
     m_Field = new Cell [m_bNx * m_bNy];
+    // zone 1
+    double r1 = 1.0;
+    double u1 = 0.0;
+    double v1 = 0.0;
+    double e1 = 1.0;
+    // zone 2
+    double r2 = 5.0;
+    double u2 = 0.0;
+    double v2 = 0.0;
+    double e2 = 0.2;
+    // zone 3
     // Gugonio conditions:
     // x := rho3, y := v3, z := e3
     // solve {d=2*sqrt(5/3*2/3*0.2), x*(d-y)=5*d, x*(d*y-2/3*z-y^2)=x*2/3*0.2, x*(d*(z+y^2/2)-y*(5/3*z+y^2/2))=5*d*0.2}
     double r3 = 20.0;
+    double u3 = 0.707107;
     double v3 = 0.707107;
     double e3 = 0.05;
     for (int xIndex = 1; xIndex < m_bNx-1; ++xIndex)
@@ -56,42 +68,35 @@ void ServerNode::initDenseField()
         for (int yIndex = 1; yIndex < m_bNy-1; ++yIndex)
         {
             id = covert2Dto1D(xIndex, yIndex);
-            /*#ifdef _DEBUG_
-            m_Field[id].r = 0;
-            m_Field[id].u = debug_initNumber();
-            m_Field[id].v = debug_initNumber();
-            m_Field[id].e = 0;
-            #else*/
             cellToCoord(xIndex, yIndex, &x, &y);
             if(y < d1 - del) {
-                m_Field[id].r = 1.0;
-                m_Field[id].u = 0.0;
-                m_Field[id].v = 0.0;
-                m_Field[id].e = 1.0;
+                m_Field[id].r = r1;
+                m_Field[id].u = u1;
+                m_Field[id].v = v1;
+                m_Field[id].e = e1;
             } else if(y < d1) {
-                if(x < d1 || x > 2.0*d1) {
-                    m_Field[id].r = 1.0;
-                    m_Field[id].u = 0.0;
-                    m_Field[id].v = 0.0;
-                    m_Field[id].e = 1.0;
+                if(x < d1 || x > d2) {
+                    m_Field[id].r = r1;
+                    m_Field[id].u = u1;
+                    m_Field[id].v = v1;
+                    m_Field[id].e = e1;
                 } else {
-                    m_Field[id].r = 5.0;
-                    m_Field[id].u = 0.0;
-                    m_Field[id].v = 0.0;
-                    m_Field[id].e = 0.2;
+                    m_Field[id].r = r2;
+                    m_Field[id].u = u2;
+                    m_Field[id].v = v2;
+                    m_Field[id].e = e2;
                 }
             } else if(y < d2) {
-                m_Field[id].r = 5.0;
-                m_Field[id].u = 0.0;
-                m_Field[id].v = 0.0;
-                m_Field[id].e = 0.2;
+                m_Field[id].r = r2;
+                m_Field[id].u = u2;
+                m_Field[id].v = v2;
+                m_Field[id].e = e2;
             } else {
                 m_Field[id].r = r3;
-                m_Field[id].u = 0.0;
+                m_Field[id].u = u3;
                 m_Field[id].v = -v3;
                 m_Field[id].e = e3;
             }
-            //#endif
         }
     }
     Log << "Dense field initialized.";
